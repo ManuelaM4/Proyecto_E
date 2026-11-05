@@ -1,27 +1,11 @@
-"""
-GUI.py
-Toda la interfaz gráfica en un solo archivo (CustomTkinter).
-
-    App          ventana principal y navegación
-    MainMenu     Ventana A: menú (Modo 2D / Modo 3D)
-    Window2D     Ventana B: lienzo 2D + Top de probabilidades
-    Window3D     Ventana C: lienzo esférico (pendiente)
-
-Diseño del modo 2D:
-  * Cada trazo es UN solo objeto de línea continua que se va alargando (no se
-    redibuja por pedazos), con un suavizado ligero del temblor de la mano.
-  * El panel derecho es un "Top N" con filas FIJAS: solo cambia su contenido.
-
-Integración: el dataset de Glifo se capturó en un lienzo de 1000x1000 y el
-extractor trabaja en esas unidades. Se dibuja en píxeles y, antes de reconocer,
-se escala x S (S = 1000/lado). La proyección vuelve a píxeles dividiendo entre S.
-"""
 import os
 import tkinter as tk
 import customtkinter as ctk
 import numpy as np
 from tkinter import messagebox
 from PIL import Image, ImageDraw, ImageFont
+import random
+import math
 
 from Recognizer import Recognizer
 from FeatureExtractor import Extractor2D
@@ -32,10 +16,11 @@ MODEL_2D = os.path.join(BASE, "modelo_2d", "models_2d.json")
 MIN_DIST_2D = 15.0      # DEBE ser igual al min_dist de modelo_2d/train_2d.py
 
 # ----------------------------------------------------------------- estilo y parámetros
-BG, CARD, TEXT, MUTED = "#f3f4f8", "#ffffff", "#1f2430", "#7b8194"
-ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#5b5bd6", "#8b8bf0", "#eceefb", "#d5d8ea"
-INK, SURFACE, SURFACE_EDGE, DANGER = "#1f2430", "#f7f8fd", "#e4e6f2", "#e5484d"
-ROW_FIRST = "#eef0ff"
+# ----------------------------------------------------------------- estilo y parámetros
+BG, CARD, TEXT, MUTED = "#f0f4f8", "#ffffff", "#1e293b", "#64748b"
+ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#2563eb", "#60a5fa", "#e0f2fe", "#e2e8f0"
+INK, SURFACE, SURFACE_EDGE, DANGER = "#0f172a", "#f8fafc", "#e2e8f0", "#ef4444"
+SUCCESS, ROW_FIRST = "#10b981", "#d1fae5"
 
 ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "iconos")
 DATA_SIZE = 1000.0      # tamaño del lienzo con el que se capturó el dataset
@@ -50,43 +35,178 @@ TOP_N = 8               # letras mostradas en el listado
 # ======================================================================
 # Ventana A · Menú principal
 # ======================================================================
+
+
 class MainMenu(ctk.CTkFrame):
     def __init__(self, master, on_2d, on_3d):
         super().__init__(master, fg_color=BG)
-        box = ctk.CTkFrame(self, fg_color="transparent")
-        box.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # --- 1. CANVAS DE FONDO ---
+        self.bg_canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
+        self.bg_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        
+        # Redibujar el fondo cada vez que la ventana cambie de tamaño
+        self.bg_canvas.bind("<Configure>", self._on_canvas_resize)
+        
+        # --- 2. CONTENEDOR PRINCIPAL ---
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.place(relx=0.5, rely=0.45, anchor="center")
 
-        ctk.CTkLabel(box, text="UNIVERSIDAD DE LOS LLANOS", text_color=MUTED,
-                     font=ctk.CTkFont(size=12, weight="bold")).pack()
-        ctk.CTkLabel(box, text="Reconocedor de caracteres", text_color=TEXT,
-                     font=ctk.CTkFont(size=34, weight="bold")).pack(pady=(6, 0))
-        ctk.CTkLabel(box, text="con Cadenas Ocultas de Markov", text_color=ACCENT,
-                     font=ctk.CTkFont(size=18)).pack(pady=(0, 6))
-        ctk.CTkLabel(box, text="Procesos Estocásticos · 603504", text_color=MUTED,
-                     font=ctk.CTkFont(size=12)).pack(pady=(0, 34))
+        # --- 3. CABECERA ---
+        ctk.CTkLabel(main_container, text="UNIVERSIDAD DE LOS LLANOS", text_color=ACCENT,
+                     font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold")).pack()
+        
+        title_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+        title_frame.pack(pady=(5, 0))
+        ctk.CTkLabel(title_frame, text="Reconocedor ", text_color=TEXT,
+                     font=ctk.CTkFont(family="Segoe UI", size=46, weight="bold")).pack(side="left")
+        ctk.CTkLabel(title_frame, text="HMM", text_color=ACCENT,
+                     font=ctk.CTkFont(family="Segoe UI", size=46, weight="bold")).pack(side="left")
+        
+        ctk.CTkLabel(main_container, text="Trazos bidimensionales y esféricos", text_color=MUTED,
+                     font=ctk.CTkFont(family="Segoe UI", size=18)).pack(pady=(0, 40))
 
-        cards = ctk.CTkFrame(box, fg_color="transparent")
-        cards.pack()
-        self._card(cards, "Modo 2D", "Trazos sobre un plano cartesiano", "Empezar", on_2d, True
-                   ).pack(side="left", padx=12)
-        self._card(cards, "Modo 3D", "Trazos sobre una esfera", "Entrar", on_3d, False
-                   ).pack(side="left", padx=12)
+        # --- 4. TARJETAS ---
+        cards_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+        cards_frame.pack()
 
-    @staticmethod
-    def _card(parent, title, subtitle, btn_text, cmd, primary):
-        f = ctk.CTkFrame(parent, fg_color=CARD, corner_radius=22, width=270, height=210)
-        f.pack_propagate(False)
-        ctk.CTkLabel(f, text=title, text_color=TEXT,
-                     font=ctk.CTkFont(size=26, weight="bold")).pack(pady=(32, 4))
-        ctk.CTkLabel(f, text=subtitle, text_color=MUTED, font=ctk.CTkFont(size=13)).pack()
-        ctk.CTkButton(f, text=btn_text, width=170, height=42, corner_radius=21,
-                      fg_color=ACCENT if primary else "#eceefb",
-                      hover_color="#4a4ac0" if primary else "#dcdff5",
-                      text_color="white" if primary else TEXT,
-                      font=ctk.CTkFont(size=14, weight="bold"),
-                      command=cmd).pack(pady=(30, 0))
-        return f
+        self._card_2d = self._create_card(
+            parent=cards_frame, title="Modo 2D", subtitle="Plano cartesiano",
+            btn_text="Ingresar al Lienzo", cmd=on_2d, 
+            theme_color=ACCENT, bg_color="#f4f7ff", is_active=True
+        )
+        self._card_2d.pack(side="left", padx=20)
 
+        self._card_3d = self._create_card(
+            parent=cards_frame, title="Modo 3D", subtitle="Superficie esférica",
+            btn_text="En Construcción", cmd=on_3d, 
+            theme_color=SUCCESS, bg_color="#f2fdf6", is_active=False
+        )
+        self._card_3d.pack(side="left", padx=20)
+
+        # Footer
+        ctk.CTkLabel(self, text="Procesos Estocásticos · 603504 · 5.º Semestre", text_color=MUTED,
+                     font=ctk.CTkFont(family="Segoe UI", size=12)).pack(side="bottom", pady=20)
+
+    def _on_canvas_resize(self, event):
+        """Este evento se dispara cuando el canvas ya tiene su tamaño real."""
+        self._draw_background_pattern(event.width, event.height)
+
+    def _draw_background_pattern(self, w, h):
+        """Dibuja un patrón estructurado de letras y ondas suaves en el fondo."""
+        self.bg_canvas.delete("all") 
+        
+        # 1. Cuadrícula elegante de símbolos matemáticos
+        letras = ["a", "b", "c", "x", "y", "z", "π", "λ", "α", "β", "∑", "∫"]
+        
+        # AQUI ESTA EL CAMBIO: Usamos tonos un poco más oscuros para que resalten
+        colores_fondo = ["#cbd5e1", "#bfdbfe", "#bbf7d0", "#fecaca"] 
+        
+        spacing = 160
+        idx = 0
+        for x in range(40, w + 100, spacing):
+            for y in range(40, h + 100, spacing):
+                char = letras[idx % len(letras)]
+                color = colores_fondo[idx % len(colores_fondo)]
+                size = 50 + (idx % 4) * 15  # Tamaños ligeramente variables
+                
+                # Truco de diseño: desfase en filas pares para que parezca un panal
+                offset_x = (spacing // 2) if (y // spacing) % 2 == 0 else 0
+                
+                self.bg_canvas.create_text(x + offset_x, y, text=char, fill=color,
+                                           font=("Segoe UI", size, "bold"))
+                idx += 1
+
+        # 2. Ondas matemáticas suaves (ahora más visibles)
+        pts_top = []
+        for x in range(0, w + 20, 20):
+            y = 100 + math.sin(x / 150) * 40
+            pts_top.extend([x, y])
+        self.bg_canvas.create_line(*pts_top, fill="#cbd5e1", width=3, smooth=True)
+        
+        pts_bot = []
+        for x in range(0, w + 20, 20):
+            y = (h - 100) + math.cos(x / 120) * 40
+            pts_bot.extend([x, y])
+        self.bg_canvas.create_line(*pts_bot, fill="#cbd5e1", width=3, smooth=True)
+
+    def _create_card(self, parent, title, subtitle, btn_text, cmd, theme_color, bg_color, is_active):
+        # MARCO EXTERIOR (Para simular sombra)
+        shadow = ctk.CTkFrame(parent, fg_color="#e2e8f0", corner_radius=28, width=324, height=454)
+        shadow.pack_propagate(False)
+        
+        # Marco de la tarjeta
+        card = ctk.CTkFrame(shadow, fg_color=bg_color, corner_radius=26, width=320, height=450,
+                            border_width=2, border_color=bg_color)
+        card.place(relx=0.5, rely=0.5, anchor="center")
+        card.pack_propagate(False)
+
+        def on_enter(e):
+            card.configure(border_color=theme_color)
+            btn.configure(fg_color=theme_color if is_active else DANGER)
+            btn.configure(text_color="white")
+            canvas.itemconfigure("trazo", width=6)
+
+        def on_leave(e):
+            card.configure(border_color=bg_color)
+            if is_active:
+                btn.configure(fg_color=theme_color, text_color="white")
+            else:
+                btn.configure(fg_color="#fee2e2", text_color=DANGER)
+            canvas.itemconfigure("trazo", width=4)
+
+        for widget in (card, shadow):
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+
+        # --- DIBUJO ILUSTRATIVO CON CANVAS ---
+        canvas = tk.Canvas(card, width=240, height=200, bg=bg_color, highlightthickness=0)
+        canvas.pack(pady=(30, 10))
+        
+        if title == "Modo 2D":
+            canvas.create_line(30, 180, 210, 180, fill="#bfdbfe", width=3) 
+            canvas.create_line(30, 20, 30, 180, fill="#bfdbfe", width=3)  
+            
+            pts = [(50, 150), (70, 110), (100, 80), (130, 100), (160, 60), (190, 70)]
+            for i in range(len(pts)-1):
+                canvas.create_line(pts[i][0], pts[i][1], pts[i+1][0], pts[i+1][1], 
+                                   fill="#bfdbfe", width=2, dash=(2, 4))
+            
+            canvas.create_line(*[c for p in pts for c in p], fill=theme_color, width=4, 
+                               smooth=True, capstyle="round", tags="trazo")
+            
+            canvas.create_oval(185, 65, 195, 75, fill=DANGER, outline="white", width=2)
+
+        else:
+            canvas.create_oval(60, 40, 180, 160, outline="#bbf7d0", width=3, fill="#dcfce7")
+            canvas.create_arc(60, 60, 180, 140, start=0, extent=180, style="arc", outline="#86efac", width=4)
+            canvas.create_arc(60, 60, 180, 140, start=180, extent=180, style="arc", outline="#86efac", width=4, dash=(4, 4))
+            canvas.create_line(90, 50, 120, 110, 150, 70, fill=theme_color, width=4, smooth=True, capstyle="round", tags="trazo")
+            canvas.create_oval(145, 65, 155, 75, fill=DANGER, outline="white", width=2)
+
+        # --- TEXTOS ---
+        ctk.CTkLabel(card, text=title, text_color=TEXT,
+                     font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold")).pack(pady=(10, 2))
+        
+        ctk.CTkLabel(card, text=subtitle, text_color=MUTED,
+                     font=ctk.CTkFont(family="Segoe UI", size=14)).pack()
+
+        # --- BOTÓN ---
+        btn_color = theme_color if is_active else "#fee2e2"
+        txt_color = "white" if is_active else DANGER
+        hover_color = "#1d4ed8" if is_active else DANGER
+
+        btn = ctk.CTkButton(card, text=btn_text, width=220, height=48, corner_radius=24,
+                            fg_color=btn_color, hover_color=hover_color,
+                            text_color=txt_color, 
+                            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+                            command=cmd)
+        btn.pack(side="bottom", pady=30)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+
+        return shadow 
 
 # ======================================================================
 # Ventana C · Modo 3D (pendiente)
@@ -134,7 +254,6 @@ class Window2D(ctk.CTkFrame):
     # ================================================================ interfaz
     @staticmethod
     def _make_icon_image(letter, px=128):
-        """Dibuja la imagen de referencia de una letra (ficha redondeada + letra)."""
         S = 4
         n = px * S
         img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
@@ -155,11 +274,10 @@ class Window2D(ctk.CTkFrame):
                 font = ImageFont.load_default()
         bb = d.textbbox((0, 0), letter, font=font)
         w, h = bb[2] - bb[0], bb[3] - bb[1]
-        d.text(((n - w) / 2 - bb[0], (n - h) / 2 - bb[1]), letter, font=font, fill="#4a4ac0")
+        d.text(((n - w) / 2 - bb[0], (n - h) / 2 - bb[1]), letter, font=font, fill=ACCENT)
         return img.resize((px, px), Image.LANCZOS)
 
     def _icon(self, letter):
-        """Imagen estática de la letra: assets/iconos/<letra>.png si existe; si no, se genera."""
         if letter not in self.icons:
             path = os.path.join(ICON_DIR, f"{letter}.png")
             if letter == "_vacio":
