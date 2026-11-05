@@ -13,10 +13,7 @@ from ModelRepository import ModelRepository
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 MODEL_2D = os.path.join(BASE, "modelo_2d", "models_2d.json")
-MIN_DIST_2D = 15.0      # DEBE ser igual al min_dist de modelo_2d/train_2d.py
-
-# ----------------------------------------------------------------- estilo y parámetros
-# ----------------------------------------------------------------- estilo y parámetros
+MIN_DIST_2D = 15.0      
 BG, CARD, TEXT, MUTED = "#f0f4f8", "#ffffff", "#1e293b", "#64748b"
 ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#2563eb", "#60a5fa", "#e0f2fe", "#e2e8f0"
 INK, SURFACE, SURFACE_EDGE, DANGER = "#0f172a", "#f8fafc", "#e2e8f0", "#ef4444"
@@ -45,14 +42,12 @@ class MainMenu(ctk.CTkFrame):
         self.bg_canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
         self.bg_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         
-        # Redibujar el fondo cada vez que la ventana cambie de tamaño
         self.bg_canvas.bind("<Configure>", self._on_canvas_resize)
         
         # --- 2. CONTENEDOR PRINCIPAL ---
         main_container = ctk.CTkFrame(self, fg_color="transparent")
         main_container.place(relx=0.5, rely=0.45, anchor="center")
 
-        # --- 3. CABECERA ---
         ctk.CTkLabel(main_container, text="UNIVERSIDAD DE LOS LLANOS", text_color=ACCENT,
                      font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold")).pack()
         
@@ -66,7 +61,6 @@ class MainMenu(ctk.CTkFrame):
         ctk.CTkLabel(main_container, text="Trazos bidimensionales y esféricos", text_color=MUTED,
                      font=ctk.CTkFont(family="Segoe UI", size=18)).pack(pady=(0, 40))
 
-        # --- 4. TARJETAS ---
         cards_frame = ctk.CTkFrame(main_container, fg_color="transparent")
         cards_frame.pack()
 
@@ -99,7 +93,6 @@ class MainMenu(ctk.CTkFrame):
         # 1. Cuadrícula elegante de símbolos matemáticos
         letras = ["a", "b", "c", "x", "y", "z", "π", "λ", "α", "β", "∑", "∫"]
         
-        # AQUI ESTA EL CAMBIO: Usamos tonos un poco más oscuros para que resalten
         colores_fondo = ["#cbd5e1", "#bfdbfe", "#bbf7d0", "#fecaca"] 
         
         spacing = 160
@@ -108,16 +101,14 @@ class MainMenu(ctk.CTkFrame):
             for y in range(40, h + 100, spacing):
                 char = letras[idx % len(letras)]
                 color = colores_fondo[idx % len(colores_fondo)]
-                size = 50 + (idx % 4) * 15  # Tamaños ligeramente variables
+                size = 50 + (idx % 4) * 15  
                 
-                # Truco de diseño: desfase en filas pares para que parezca un panal
                 offset_x = (spacing // 2) if (y // spacing) % 2 == 0 else 0
                 
                 self.bg_canvas.create_text(x + offset_x, y, text=char, fill=color,
                                            font=("Segoe UI", size, "bold"))
                 idx += 1
 
-        # 2. Ondas matemáticas suaves (ahora más visibles)
         pts_top = []
         for x in range(0, w + 20, 20):
             y = 100 + math.sin(x / 150) * 40
