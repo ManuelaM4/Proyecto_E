@@ -19,7 +19,7 @@ def main():
     print("Iniciando entrenamiento 2D...")
     
     extractor = Extractor2D(k_dir=16, min_dist=15.0) 
-    dataset_path = Path(__file__).parent / 'glifo-dataset-2026-11-05.json'
+    dataset_path = Path(__file__).parent / 'glifo-dataset-2026-11-06.json'
     
     if not dataset_path.exists():
         print(f"❌ ERROR: No se encontró el dataset en {dataset_path}")
