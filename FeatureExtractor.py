@@ -85,3 +85,79 @@ class Extractor2D(FeatureExtractor):
             y -= self.min_dist * np.sin(ang)
             points.append((x, y))
         return points
+
+
+# ======================================================================
+# NUEVO: Extractor para el Modo 3D
+# ======================================================================
+class Extractor3D(FeatureExtractor):
+    """
+    Extractor para el modo 3D.
+    Convierte puntos (x, y, z) de la esfera a coordenadas esféricas (theta, phi)
+    y luego extrae la dirección del movimiento angular (Δtheta, Δphi).
+    """
+    def __init__(self, k_dir=16, min_angle_dist=0.05):
+        self.k_dir = k_dir
+        self.min_angle_dist = min_angle_dist
+        self.pen_up = k_dir
+
+    @property
+    def n_symbols(self):
+        return self.k_dir + 1
+
+    def _to_spherical(self, p):
+        """Convierte un punto cartesiano (x,y,z) a coordenadas esféricas (theta, phi)."""
+        x, y, z = p[0], p[1], p[2]
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r == 0: 
+            return (0.0, 0.0)
+        theta = np.arccos(np.clip(z / r, -1.0, 1.0)) # Ángulo polar (0 a pi)
+        phi = np.arctan2(y, x)                       # Ángulo azimutal (-pi a pi)
+        return (theta, phi)
+
+    def _direction_symbol(self, p1, p2):
+        t1, f1 = self._to_spherical(p1)
+        t2, f2 = self._to_spherical(p2)
+        
+        # Diferencia angular
+        dt = t2 - t1
+        df = f2 - f1
+        # Normalizar phi para evitar saltos en los polos
+        if df > np.pi: df -= 2 * np.pi
+        elif df < -np.pi: df += 2 * np.pi
+
+        # Si el movimiento es muy pequeño, no se emite símbolo
+        if np.sqrt(dt**2 + df**2) < self.min_angle_dist:
+            return None
+
+        # Cuantización del vector (dt, df) en sectores de dirección
+        ang = np.arctan2(dt, df) % (2 * np.pi)
+        sector = 2 * np.pi / self.k_dir
+        return int(np.floor(ang / sector + 0.5)) % self.k_dir
+
+    def _stroke_symbols(self, stroke):
+        pts = np.asarray(stroke, dtype=float)
+        if len(pts) < 2: 
+            return []
+        symbols = []
+        for i in range(len(pts) - 1):
+            sym = self._direction_symbol(pts[i], pts[i+1])
+            if sym is not None:
+                symbols.append(sym)
+        return symbols
+
+    def extract(self, strokes):
+        seq = []
+        for stroke in strokes:
+            s = self._stroke_symbols(stroke)
+            if not s: 
+                continue
+            if seq: 
+                seq.append(self.pen_up)
+            seq.extend(s)
+        return seq
+
+    def decode(self, symbols, origin):
+        # La proyección futura en 3D es compleja y se puede dejar para después.
+        # Por ahora retornamos una lista vacía para que la interfaz no falle.
+        return []
