@@ -22,10 +22,10 @@ def main():
     dataset_path = Path(__file__).parent / 'glifo-dataset-2026-11-05.json'
     
     if not dataset_path.exists():
-        print(f"❌ ERROR: No se encontró el dataset en {dataset_path}")
+        print(f" ERROR: No se encontró el dataset en {dataset_path}")
         return
 
-    print(f"✅ Dataset encontrado: {dataset_path.name}")
+    print(f" Dataset encontrado: {dataset_path.name}")
     
     with open(dataset_path, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
@@ -45,7 +45,7 @@ def main():
     output_path = Path(__file__).parent / 'models_2d.json'
     repo = ModelRepository(output_path)
     repo.save(classifier)
-    print(f"\n✅ Modelos guardados exitosamente en: {output_path}")
+    print(f"\n Modelos guardados exitosamente en: {output_path}")
 
 if __name__ == "__main__":
     main()
