@@ -554,13 +554,26 @@ class Window2D(ctk.CTkFrame):
         self.strokes, self.items, self.disp = [], [], []
         self.drawing = False
         self.canvas.delete("ink")
+        self.canvas.delete("old")
         self._hide_projection()
         self.reset_panel()
         self._show_hint()
 
     def restart_capture(self):
-        """Reiniciar captura: vuelve al estado inicial (lienzo + probabilidades)."""
-        self.clear_canvas()
+        """Reiniciar captura: empieza una secuencia O1:t nueva.
+        La tinta anterior queda en gris como referencia y deja de contar para el reconocimiento."""
+        GRIS = "#cbd5e1"
+        for item in self.canvas.find_withtag("ink"):
+            if self.canvas.type(item) == "line":
+                self.canvas.itemconfigure(item, fill=GRIS)
+            else:                                   # punto (óvalo)
+                self.canvas.itemconfigure(item, fill=GRIS, outline=GRIS)
+            self.canvas.addtag_withtag("old", item)
+            self.canvas.dtag(item, "ink")
+        self.strokes, self.items, self.disp = [], [], []
+        self.drawing = False
+        self._hide_projection()
+        self.reset_panel()
 
 
 # ======================================================================
