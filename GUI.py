@@ -4,7 +4,6 @@ import customtkinter as ctk
 import numpy as np
 from tkinter import messagebox
 from PIL import Image, ImageDraw, ImageFont
-import random
 import math
 
 from Recognizer import Recognizer
@@ -19,32 +18,27 @@ ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#2563eb", "#60a5fa", "#e0f2fe", "#e2e8f0"
 INK, SURFACE, SURFACE_EDGE, DANGER = "#0f172a", "#f8fafc", "#e2e8f0", "#ef4444"
 SUCCESS, ROW_FIRST = "#10b981", "#d1fae5"
 
-ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "iconos")
-DATA_SIZE = 1000.0      # tamaño del lienzo con el que se capturó el dataset
-BRUSH = 5               # grosor del pincel (px)
-MIN_STEP = 2.0          # distancia mínima entre puntos capturados (px)
-FOLLOW = 0.55           # suavizado del trazo: 1 = sin suavizar, menor = más suave
-UPDATE_MS = 50          # refresco máximo del panel (~20 fps)
-TEMPERATURE = 4.0       # solo suaviza la visualización de las probabilidades
-TOP_N = 8               # letras mostradas en el listado
+ICON_DIR = os.path.join(BASE, "assets", "iconos")
+DATA_SIZE = 1000.0      
+BRUSH = 5               
+MIN_STEP = 2.0          
+FOLLOW = 0.55           
+UPDATE_MS = 50          
+TEMPERATURE = 4.0       
+TOP_N = 8               
 
 
 # ======================================================================
 # Ventana A · Menú principal
 # ======================================================================
-
-
 class MainMenu(ctk.CTkFrame):
     def __init__(self, master, on_2d, on_3d):
         super().__init__(master, fg_color=BG)
         
-        # --- 1. CANVAS DE FONDO ---
         self.bg_canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
         self.bg_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        
         self.bg_canvas.bind("<Configure>", self._on_canvas_resize)
         
-        # --- 2. CONTENEDOR PRINCIPAL ---
         main_container = ctk.CTkFrame(self, fg_color="transparent")
         main_container.place(relx=0.5, rely=0.45, anchor="center")
 
@@ -78,23 +72,16 @@ class MainMenu(ctk.CTkFrame):
         )
         self._card_3d.pack(side="left", padx=20)
 
-        # Footer
         ctk.CTkLabel(self, text="Procesos Estocásticos · 603504 · 5.º Semestre", text_color=MUTED,
                      font=ctk.CTkFont(family="Segoe UI", size=12)).pack(side="bottom", pady=20)
 
     def _on_canvas_resize(self, event):
-        """Este evento se dispara cuando el canvas ya tiene su tamaño real."""
         self._draw_background_pattern(event.width, event.height)
 
     def _draw_background_pattern(self, w, h):
-        """Dibuja un patrón estructurado de letras y ondas suaves en el fondo."""
         self.bg_canvas.delete("all") 
-        
-        # 1. Cuadrícula elegante de símbolos matemáticos
         letras = ["a", "b", "c", "x", "y", "z", "π", "λ", "α", "β", "∑", "∫"]
-        
         colores_fondo = ["#cbd5e1", "#bfdbfe", "#bbf7d0", "#fecaca"] 
-        
         spacing = 160
         idx = 0
         for x in range(40, w + 100, spacing):
@@ -102,9 +89,7 @@ class MainMenu(ctk.CTkFrame):
                 char = letras[idx % len(letras)]
                 color = colores_fondo[idx % len(colores_fondo)]
                 size = 50 + (idx % 4) * 15  
-                
                 offset_x = (spacing // 2) if (y // spacing) % 2 == 0 else 0
-                
                 self.bg_canvas.create_text(x + offset_x, y, text=char, fill=color,
                                            font=("Segoe UI", size, "bold"))
                 idx += 1
@@ -122,11 +107,9 @@ class MainMenu(ctk.CTkFrame):
         self.bg_canvas.create_line(*pts_bot, fill="#cbd5e1", width=3, smooth=True)
 
     def _create_card(self, parent, title, subtitle, btn_text, cmd, theme_color, bg_color, is_active):
-        # MARCO EXTERIOR (Para simular sombra)
         shadow = ctk.CTkFrame(parent, fg_color="#e2e8f0", corner_radius=28, width=324, height=454)
         shadow.pack_propagate(False)
         
-        # Marco de la tarjeta
         card = ctk.CTkFrame(shadow, fg_color=bg_color, corner_radius=26, width=320, height=450,
                             border_width=2, border_color=bg_color)
         card.place(relx=0.5, rely=0.5, anchor="center")
@@ -150,24 +133,19 @@ class MainMenu(ctk.CTkFrame):
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
 
-        # --- DIBUJO ILUSTRATIVO CON CANVAS ---
         canvas = tk.Canvas(card, width=240, height=200, bg=bg_color, highlightthickness=0)
         canvas.pack(pady=(30, 10))
         
         if title == "Modo 2D":
             canvas.create_line(30, 180, 210, 180, fill="#bfdbfe", width=3) 
             canvas.create_line(30, 20, 30, 180, fill="#bfdbfe", width=3)  
-            
             pts = [(50, 150), (70, 110), (100, 80), (130, 100), (160, 60), (190, 70)]
             for i in range(len(pts)-1):
                 canvas.create_line(pts[i][0], pts[i][1], pts[i+1][0], pts[i+1][1], 
                                    fill="#bfdbfe", width=2, dash=(2, 4))
-            
             canvas.create_line(*[c for p in pts for c in p], fill=theme_color, width=4, 
                                smooth=True, capstyle="round", tags="trazo")
-            
             canvas.create_oval(185, 65, 195, 75, fill=DANGER, outline="white", width=2)
-
         else:
             canvas.create_oval(60, 40, 180, 160, outline="#bbf7d0", width=3, fill="#dcfce7")
             canvas.create_arc(60, 60, 180, 140, start=0, extent=180, style="arc", outline="#86efac", width=4)
@@ -175,14 +153,11 @@ class MainMenu(ctk.CTkFrame):
             canvas.create_line(90, 50, 120, 110, 150, 70, fill=theme_color, width=4, smooth=True, capstyle="round", tags="trazo")
             canvas.create_oval(145, 65, 155, 75, fill=DANGER, outline="white", width=2)
 
-        # --- TEXTOS ---
         ctk.CTkLabel(card, text=title, text_color=TEXT,
                      font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold")).pack(pady=(10, 2))
-        
         ctk.CTkLabel(card, text=subtitle, text_color=MUTED,
                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack()
 
-        # --- BOTÓN ---
         btn_color = theme_color if is_active else "#fee2e2"
         txt_color = "white" if is_active else DANGER
         hover_color = "#1d4ed8" if is_active else DANGER
@@ -198,6 +173,7 @@ class MainMenu(ctk.CTkFrame):
         btn.bind("<Leave>", on_leave)
 
         return shadow 
+
 
 # ======================================================================
 # Ventana C · Modo 3D (pendiente)
@@ -219,30 +195,33 @@ class Window3D(ctk.CTkFrame):
 
 
 # ======================================================================
-# Ventana B · Modo 2D
+# Ventana B · Modo 2D (Diseño Responsivo)
 # ======================================================================
 class Window2D(ctk.CTkFrame):
     def __init__(self, master, recognizer, on_back):
         super().__init__(master, fg_color=BG)
         self.rec, self.on_back = recognizer, on_back
-        self.size = int(max(380, min(560, self.winfo_screenheight() - 300)))
+        
+        self.size = 500
         self.S = DATA_SIZE / self.size
-        self.strokes = []          # trazos crudos en px: [[(x, y), ...], ...]
-        self.items = []            # un objeto de canvas por trazo (para deshacer)
-        self.disp = []             # puntos suavizados del trazo actual
-        self.cur_kind = None       # "dot" | "line"
+        self.offset = (0, 0)
+        self.strokes = []
+        self.items = []
+        self.disp = []
+        self.cur_kind = None
         self.drawing = False
         self._pending = None
         self._last_key = None
         self.proj_item = None
         self.icons, self.slots = {}, []
+        
         self._build()
         self.reset_panel()
+        
         top = self.winfo_toplevel()
         top.bind("<Control-z>", lambda e: self.undo() if self.winfo_ismapped() else None)
         top.bind("<Delete>", lambda e: self.clear_canvas() if self.winfo_ismapped() else None)
 
-    # ================================================================ interfaz
     @staticmethod
     def _make_icon_image(letter, px=128):
         S = 4
@@ -285,7 +264,6 @@ class Window2D(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # ---------- cabecera ----------
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(18, 10))
         ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17,
@@ -297,26 +275,23 @@ class Window2D(ctk.CTkFrame):
                      text_color="white", fg_color=ACCENT, corner_radius=10,
                      width=70, height=26).pack(side="left")
 
-        # ---------- tarjeta izquierda: herramientas + lienzo ----------
         left = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
-        left.grid(row=1, column=0, sticky="n", padx=(24, 12), pady=(0, 24))
+        left.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(0, 24))
 
         tools = ctk.CTkFrame(left, fg_color="transparent")
         tools.pack(fill="x", padx=18, pady=(16, 10))
+        
         ctk.CTkButton(tools, text="↶  Deshacer", width=110, height=36, corner_radius=18,
                       fg_color=TILE, text_color=TEXT, hover_color="#dcdff5",
                       command=self.undo).pack(side="left", padx=(0, 8))
         ctk.CTkButton(tools, text="Limpiar lienzo", width=130, height=36, corner_radius=18,
                       fg_color=DANGER, hover_color="#c93a3f", text_color="white",
                       command=self.clear_canvas).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(tools, text="↻  Reiniciar captura", width=150, height=36, corner_radius=18,
-                      fg_color=ACCENT, hover_color="#4a4ac0", text_color="white",
-                      command=self.restart_capture).pack(side="left")
 
-        self.canvas = tk.Canvas(left, width=self.size, height=self.size, bg=CARD,
-                                highlightthickness=0, cursor="crosshair")
-        self.canvas.pack(padx=18, pady=(0, 8))
-        self._draw_surface()
+        self.canvas = tk.Canvas(left, bg=CARD, highlightthickness=0, cursor="crosshair")
+        self.canvas.pack(fill="both", expand=True, padx=18, pady=(0, 8))
+        
+        self.canvas.bind("<Configure>", self._on_canvas_resize)
         self.ring = self.canvas.create_oval(0, 0, 0, 0, outline=ACCENT, width=2,
                                             state="hidden", tags="ring")
         self.canvas.bind("<ButtonPress-1>", self.on_press)
@@ -328,7 +303,6 @@ class Window2D(ctk.CTkFrame):
         self.lbl_status = ctk.CTkLabel(left, text="", font=ctk.CTkFont(size=13), text_color=MUTED)
         self.lbl_status.pack(pady=(0, 14))
 
-        # ---------- tarjeta derecha: resultado + Top N ----------
         right = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
         right.grid(row=1, column=1, sticky="nsew", padx=(12, 24), pady=(0, 24))
         right.grid_columnconfigure(0, weight=1)
@@ -375,20 +349,52 @@ class Window2D(ctk.CTkFrame):
             pct.grid(row=0, column=4, padx=(10, 12))
             self.slots.append({"letter": None, "icon": icon, "name": name, "bar": bar, "pct": pct})
 
-    # ================================================================ lienzo
-    def _draw_surface(self):
+    def _on_canvas_resize(self, event):
+        self.canvas.delete("surface")
+        self.size = max(200, min(event.width, event.height))
+        self.S = DATA_SIZE / self.size
+        
         c, s, r = self.canvas, self.size, 22
         x1 = y1 = 2
         x2 = y2 = s - 2
         pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
                x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
-        c.create_polygon(pts, smooth=True, fill=SURFACE, outline=SURFACE_EDGE, width=2)
+        
+        self.offset = ((event.width - s) / 2, (event.height - s) / 2)
+        ox, oy = self.offset
+        
+        pts_shifted = [p + (ox if i % 2 == 0 else oy) for i, p in enumerate(pts)]
+        c.create_polygon(pts_shifted, smooth=True, fill=SURFACE, outline=SURFACE_EDGE, width=2, tags="surface")
         self._show_hint()
+        self._redraw_all_strokes()
+
+    def _redraw_all_strokes(self):
+        self.canvas.delete("ink")
+        self.items = []
+        ox, oy = self.offset
+        for stroke in self.strokes:
+            disp_stroke = [(x + ox, y + oy) for x, y in stroke]
+            flat = [c for p in disp_stroke for c in p]
+            if len(flat) >= 4:
+                item = self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True,
+                                               splinesteps=8, capstyle="round",
+                                               joinstyle="round", tags="ink")
+                self.items.append(item)
+            elif len(flat) == 2:
+                x, y = flat
+                r = BRUSH / 2.0
+                item = self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=INK, outline=INK, tags="ink")
+                self.items.append(item)
+        self.canvas.tag_raise("ring")
 
     def _show_hint(self):
         self.canvas.delete("hint")
-        self.canvas.create_text(self.size / 2, self.size / 2, text="Dibuja aquí una letra minúscula",
-                                fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
+        if not self.strokes:
+            ox, oy = self.offset
+            x = ox + self.size / 2
+            y = oy + self.size / 2
+            self.canvas.create_text(x, y, text="Dibuja aquí una letra minúscula",
+                                    fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
 
     def _move_ring(self, x, y):
         r = BRUSH + 1
@@ -396,7 +402,6 @@ class Window2D(ctk.CTkFrame):
         self.canvas.itemconfigure(self.ring, state="normal")
         self.canvas.tag_raise("ring")
 
-    # ================================================================ ratón
     def on_press(self, e):
         self.drawing = True
         self.canvas.delete("hint")
@@ -418,21 +423,20 @@ class Window2D(ctk.CTkFrame):
         lx, ly = stroke[-1]
         if (e.x - lx) ** 2 + (e.y - ly) ** 2 < MIN_STEP ** 2:
             return
-        stroke.append((e.x, e.y))                       # punto crudo -> reconocimiento
-        px, py = self.disp[-1]                          # punto suavizado -> pantalla
+        stroke.append((e.x, e.y))
+        px, py = self.disp[-1]
         self.disp.append((px + (e.x - px) * FOLLOW, py + (e.y - py) * FOLLOW))
         self._update_line()
         self.schedule_update()
 
     def on_release(self, e):
         if self.drawing and self.strokes and self.cur_kind == "line":
-            self.disp.append(self.strokes[-1][-1])      # cierra el trazo en el último punto real
+            self.disp.append(self.strokes[-1][-1])
             self._update_line()
         self.drawing = False
         self.do_update()
 
     def _update_line(self):
-        """Un solo objeto de línea por trazo: se alarga, nunca se redibuja por pedazos."""
         flat = [c for p in self.disp for c in p]
         if self.cur_kind == "dot":
             self.canvas.delete(self.items[-1])
@@ -444,20 +448,18 @@ class Window2D(ctk.CTkFrame):
             self.canvas.coords(self.items[-1], *flat)
         self.canvas.tag_raise("ring")
 
-    # ================================================================ reconocimiento
     def _data_strokes(self):
-        return [[(x * self.S, y * self.S) for x, y in s] for s in self.strokes]
+        ox, oy = self.offset
+        return [[((x - ox) * self.S, (y - oy) * self.S) for x, y in s] for s in self.strokes]
 
     def _ranking(self, data):
-        """P(c | O_1:t) por Bayes con prior uniforme, usando log-verosimilitudes Forward.
-        La temperatura solo suaviza la visualización (T=1 es el posterior exacto)."""
         seq = self.rec.extractor.extract(data)
         if not seq:
             return []
         models = self.rec.classifier.models
         chars = list(models.keys())
         ll = np.array([models[c].log_likelihood(seq) for c in chars]) / TEMPERATURE
-        ll -= ll.max()                                  # log-sum-exp estable
+        ll -= ll.max()
         p = np.exp(ll)
         p /= p.sum()
         order = np.argsort(-p)
@@ -477,14 +479,14 @@ class Window2D(ctk.CTkFrame):
             self._hide_projection()
             return
         top = [(l, round(p, 3)) for l, p in ranking[:TOP_N]]
-        if top != self._last_key:                       # solo se repinta si algo cambió
+        if top != self._last_key:
             self._last_key = top
             self._show_top(ranking[:TOP_N])
         self._draw_projection(data)
 
     def _show_top(self, top):
         for slot, (letter, p) in zip(self.slots, top):
-            if slot["letter"] != letter:                # el icono solo cambia si cambia la letra
+            if slot["letter"] != letter:
                 slot["letter"] = letter
                 slot["icon"].configure(image=self._icon(letter))
                 slot["name"].configure(text=letter)
@@ -505,10 +507,11 @@ class Window2D(ctk.CTkFrame):
         if not res or not res[1]:
             self._hide_projection()
             return
+        ox, oy = self.offset
         x, y = self.strokes[-1][-1]
         path = [x, y]
-        for px, py in res[1]:                           # unidades del dataset -> píxeles
-            path += [px / self.S, py / self.S]
+        for px, py in res[1]:
+            path += [(px / self.S) + ox, (py / self.S) + oy]
         if len(path) < 4:
             self._hide_projection()
             return
@@ -521,7 +524,6 @@ class Window2D(ctk.CTkFrame):
         self.canvas.tag_raise("ink")
         self.canvas.tag_raise("ring")
 
-    # ================================================================ controles
     def reset_panel(self):
         self._last_key = None
         for slot in self.slots:
@@ -535,7 +537,6 @@ class Window2D(ctk.CTkFrame):
         self.lbl_status.configure(text="Empieza a dibujar con el ratón o con el dedo")
 
     def undo(self):
-        """Quita el último trazo."""
         if not self.strokes:
             return
         self.strokes.pop()
@@ -550,30 +551,12 @@ class Window2D(ctk.CTkFrame):
             self._show_hint()
 
     def clear_canvas(self):
-        """Limpiar lienzo: borra todo lo dibujado y la proyección."""
         self.strokes, self.items, self.disp = [], [], []
         self.drawing = False
         self.canvas.delete("ink")
-        self.canvas.delete("old")
         self._hide_projection()
         self.reset_panel()
         self._show_hint()
-
-    def restart_capture(self):
-        """Reiniciar captura: empieza una secuencia O1:t nueva.
-        La tinta anterior queda en gris como referencia y deja de contar para el reconocimiento."""
-        GRIS = "#cbd5e1"
-        for item in self.canvas.find_withtag("ink"):
-            if self.canvas.type(item) == "line":
-                self.canvas.itemconfigure(item, fill=GRIS)
-            else:                                   # punto (óvalo)
-                self.canvas.itemconfigure(item, fill=GRIS, outline=GRIS)
-            self.canvas.addtag_withtag("old", item)
-            self.canvas.dtag(item, "ink")
-        self.strokes, self.items, self.disp = [], [], []
-        self.drawing = False
-        self._hide_projection()
-        self.reset_panel()
 
 
 # ======================================================================
@@ -591,7 +574,7 @@ class App(ctk.CTk):
         self.minsize(1000, 660)
         self.configure(fg_color=BG)
 
-        self.recognizer_2d = self._load_model_2d()      # la guía pide cargar los modelos al iniciar
+        self.recognizer_2d = self._load_model_2d()
         self.current = None
         self.window2d = None
         self.window3d = None
@@ -630,6 +613,7 @@ class App(ctk.CTk):
         if self.window3d is None:
             self.window3d = Window3D(self, on_back=self.go_menu)
         self.show(self.window3d)
+
 
 if __name__ == "__main__":
     app = App()
