@@ -7,12 +7,12 @@ from PIL import Image, ImageDraw, ImageFont
 import math
 
 from Recognizer import Recognizer
-from FeatureExtractor import Extractor2D, Extractor3D  # <-- Importamos Extractor3D
+from FeatureExtractor import Extractor2D, Extractor3D
 from ModelRepository import ModelRepository
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 MODEL_2D = os.path.join(BASE, "modelo_2d", "models_2d.json")
-MODEL_3D = os.path.join(BASE, "modelo_3d", "models_3d.json") # <-- Ruta del modelo 3D
+MODEL_3D = os.path.join(BASE, "modelo_3d", "models_3d.json")
 MIN_DIST_2D = 15.0      
 BG, CARD, TEXT, MUTED = "#f0f4f8", "#ffffff", "#1e293b", "#64748b"
 ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#2563eb", "#60a5fa", "#e0f2fe", "#e2e8f0"
@@ -24,7 +24,7 @@ DATA_SIZE = 1000.0
 BRUSH = 5               
 MIN_STEP = 2.0          
 FOLLOW = 0.55           
-UPDATE_MS = 200         
+UPDATE_MS = 100         
 TEMPERATURE = 4.0       
 TOP_N = 8               
 
@@ -68,8 +68,8 @@ class MainMenu(ctk.CTkFrame):
 
         self._card_3d = self._create_card(
             parent=cards_frame, title="Modo 3D", subtitle="Superficie esférica",
-            btn_text="Ingresar al Lienzo", cmd=on_3d,  # <-- Cambiado de "En Construcción" a "Ingresar"
-            theme_color=SUCCESS, bg_color="#f2fdf6", is_active=True # <-- Activado
+            btn_text="Ingresar al Lienzo", cmd=on_3d, 
+            theme_color=SUCCESS, bg_color="#f2fdf6", is_active=True
         )
         self._card_3d.pack(side="left", padx=20)
 
@@ -177,7 +177,7 @@ class MainMenu(ctk.CTkFrame):
 
 
 # ======================================================================
-# Ventana C · Modo 3D
+# Ventana C · Modo 3D (Canvas nativo simulado)
 # ======================================================================
 class Window3D(ctk.CTkFrame):
     def __init__(self, master, recognizer, on_back):
@@ -186,9 +186,9 @@ class Window3D(ctk.CTkFrame):
         
         self.size = 500
         self.offset = (0, 0)
-        self.strokes = []          # Almacena tuplas 3D (x,y,z)
+        self.strokes = []
         self.items = []            
-        self.disp = []             # Almacena tuplas 2D para dibujar en canvas
+        self.disp = []             
         self.cur_kind = None
         self.drawing = False
         self._pending = None
@@ -341,7 +341,6 @@ class Window3D(ctk.CTkFrame):
         self.offset = ((event.width - s) / 2, (event.height - s) / 2)
         ox, oy = self.offset
         
-        # Dibujar esfera
         c.create_oval(cx - r + ox, cy - r + oy, cx + r + ox, cy + r + oy, 
                       fill=SURFACE, outline=SURFACE_EDGE, width=2, tags="surface")
         
@@ -455,11 +454,12 @@ class Window3D(ctk.CTkFrame):
 
     def _ranking(self, data):
         seq = self.rec.extractor.extract(data)
-        if not seq:
+        if len(seq) < 3:
             return []
+            
         models = self.rec.classifier.models
         chars = list(models.keys())
-        ll = np.array([models[c].log_likelihood(seq) for c in chars]) / TEMPERATURE
+        ll = np.array([models[c].log_likelihood(seq) for c in chars])
         ll -= ll.max()
         p = np.exp(ll)
         p /= p.sum()
@@ -474,15 +474,21 @@ class Window3D(ctk.CTkFrame):
         self._pending = None
         if not self.strokes:
             return
+        
+        if len(self.strokes[-1]) < 3:
+            return
+            
         data = self._data_strokes()
         ranking = self._ranking(data)
         if not ranking:
             self._hide_projection()
             return
+        
         top = [(l, round(p, 3)) for l, p in ranking[:TOP_N]]
         if top != self._last_key:
             self._last_key = top
             self._show_top(ranking[:TOP_N])
+        
         self._draw_projection(data)
 
     def _show_top(self, top):
@@ -503,7 +509,6 @@ class Window3D(ctk.CTkFrame):
             self.canvas.itemconfigure(self.proj_item, state="hidden")
 
     def _draw_projection(self, data):
-        # Como Extractor3D.decode devuelve [], esto simplemente no dibujará nada
         res = self.rec.autocomplete(data)
         if not res or not res[1]:
             self._hide_projection()
@@ -547,7 +552,7 @@ class Window3D(ctk.CTkFrame):
 
 
 # ======================================================================
-# Ventana B · Modo 2D (Diseño Responsivo)
+# Ventana B · Modo 2D
 # ======================================================================
 class Window2D(ctk.CTkFrame):
     def __init__(self, master, recognizer, on_back):
@@ -927,7 +932,7 @@ class App(ctk.CTk):
         self.configure(fg_color=BG)
 
         self.recognizer_2d = self._load_model_2d()
-        self.recognizer_3d = self._load_model_3d() # <-- Cargar modelo 3D
+        self.recognizer_3d = self._load_model_3d()
         self.current = None
         self.window2d = None
         self.window3d = None
@@ -949,8 +954,8 @@ class App(ctk.CTk):
         try:
             classifier = ModelRepository(MODEL_3D).load()
         except FileNotFoundError:
-            return None # Silencioso al inicio, avisa si intentas entrar
-        return Recognizer(Extractor3D(k_dir=16, min_angle_dist=0.05), classifier)
+            return None
+        return Recognizer(Extractor3D(k_dir=16, min_angle_dist=0.01), classifier)
 
     def show(self, frame):
         if self.current is not None:

@@ -96,7 +96,7 @@ class Extractor3D(FeatureExtractor):
     Convierte puntos (x, y, z) de la esfera a coordenadas esféricas (theta, phi)
     y luego extrae la dirección del movimiento angular (Δtheta, Δphi).
     """
-    def __init__(self, k_dir=16, min_angle_dist=0.05):
+    def __init__(self, k_dir=16, min_angle_dist=0.01):
         self.k_dir = k_dir
         self.min_angle_dist = min_angle_dist
         self.pen_up = k_dir
