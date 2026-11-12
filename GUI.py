@@ -24,7 +24,7 @@ DATA_SIZE = 1000.0
 BRUSH = 5               
 MIN_STEP = 2.0          
 FOLLOW = 0.55           
-UPDATE_MS = 50          
+UPDATE_MS = 200         
 TEMPERATURE = 4.0       
 TOP_N = 8               
 
