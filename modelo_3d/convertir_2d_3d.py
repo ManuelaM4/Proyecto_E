@@ -16,7 +16,7 @@ def extraer_puntos_planos(elemento):
     return puntos
 
 def main():
-    ruta_2d = "modelo_2d/glifo-dataset-2026-11-06.json"
+    ruta_2d = "modelo_2d/glifo-dataset-2026-11-12.json"
     if not os.path.exists(ruta_2d):
         print(f"❌ No se encontró {ruta_2d}")
         return
