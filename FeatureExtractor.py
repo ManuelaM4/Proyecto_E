@@ -88,15 +88,18 @@ class Extractor2D(FeatureExtractor):
 
 
 # ======================================================================
-# NUEVO: Extractor para el Modo 3D
+# Extractor para el Modo 3D
 # ======================================================================
 class Extractor3D(FeatureExtractor):
     """
     Extractor para el modo 3D.
-    Convierte puntos (x, y, z) de la esfera a coordenadas esféricas (theta, phi)
-    y luego extrae la dirección del movimiento angular (Δtheta, Δphi).
+    Para cada par de puntos sobre la esfera calcula el rumbo (heading) en el
+    plano tangente local, tomando como "norte" la dirección "arriba de la
+    pantalla" (eje +y). En el centro de la esfera coincide con el chain code 2D.
+    Emite un símbolo solo cuando la distancia geodésica al último punto
+    emitido supera min_angle_dist (acumulativo, igual que en 2D).
     """
-    def __init__(self, k_dir=16, min_angle_dist=0.01):
+    def __init__(self, k_dir=16, min_angle_dist=0.03):
         self.k_dir = k_dir
         self.min_angle_dist = min_angle_dist
         self.pen_up = k_dir
@@ -105,59 +108,73 @@ class Extractor3D(FeatureExtractor):
     def n_symbols(self):
         return self.k_dir + 1
 
-    def _to_spherical(self, p):
-        """Convierte un punto cartesiano (x,y,z) a coordenadas esféricas (theta, phi)."""
-        x, y, z = p[0], p[1], p[2]
-        r = np.sqrt(x**2 + y**2 + z**2)
-        if r == 0: 
-            return (0.0, 0.0)
-        theta = np.arccos(np.clip(z / r, -1.0, 1.0)) # Ángulo polar (0 a pi)
-        phi = np.arctan2(y, x)                       # Ángulo azimutal (-pi a pi)
-        return (theta, phi)
+    @staticmethod
+    def _unit(p):
+        p = np.asarray(p, dtype=float)[:3]
+        n = np.linalg.norm(p)
+        return p / n if n > 0 else np.array([0.0, 0.0, 1.0])
 
-    def _direction_symbol(self, p1, p2):
-        t1, f1 = self._to_spherical(p1)
-        t2, f2 = self._to_spherical(p2)
-        
-        # Diferencia angular
-        dt = t2 - t1
-        df = f2 - f1
-        # Normalizar phi para evitar saltos en los polos
-        if df > np.pi: df -= 2 * np.pi
-        elif df < -np.pi: df += 2 * np.pi
+    @staticmethod
+    def _frame(p):
+        """Base tangente local en p: (norte, este)."""
+        up = np.array([0.0, 1.0, 0.0])
+        n = up - np.dot(up, p) * p
+        nn = np.linalg.norm(n)
+        if nn < 1e-6:                       # justo en el polo superior/inferior
+            n = np.array([0.0, 0.0, 1.0])
+            n = n - np.dot(n, p) * p
+            nn = np.linalg.norm(n)
+        n = n / nn
+        e = np.cross(n, p)
+        return n, e
 
-        # Si el movimiento es muy pequeño, no se emite símbolo
-        if np.sqrt(dt**2 + df**2) < self.min_angle_dist:
-            return None
-
-        # Cuantización del vector (dt, df) en sectores de dirección
-        ang = np.arctan2(dt, df) % (2 * np.pi)
+    def _direction_symbol(self, p, q):
+        n, e = self._frame(p)
+        d = q - p
+        ang = np.arctan2(np.dot(d, n), np.dot(d, e)) % (2 * np.pi)
         sector = 2 * np.pi / self.k_dir
         return int(np.floor(ang / sector + 0.5)) % self.k_dir
 
     def _stroke_symbols(self, stroke):
-        pts = np.asarray(stroke, dtype=float)
-        if len(pts) < 2: 
+        if len(stroke) < 2:
             return []
+        pts = [self._unit(p) for p in stroke]
         symbols = []
-        for i in range(len(pts) - 1):
-            sym = self._direction_symbol(pts[i], pts[i+1])
-            if sym is not None:
-                symbols.append(sym)
+        last = pts[0]
+        for p in pts[1:]:
+            dist = np.arccos(np.clip(np.dot(last, p), -1.0, 1.0))
+            if dist >= self.min_angle_dist:
+                symbols.append(self._direction_symbol(last, p))
+                last = p
         return symbols
 
     def extract(self, strokes):
         seq = []
         for stroke in strokes:
             s = self._stroke_symbols(stroke)
-            if not s: 
+            if not s:
                 continue
-            if seq: 
+            if seq:
                 seq.append(self.pen_up)
             seq.extend(s)
         return seq
 
     def decode(self, symbols, origin):
-        # La proyección futura en 3D es compleja y se puede dejar para después.
-        # Por ahora retornamos una lista vacía para que la interfaz no falle.
-        return []
+        """
+        Reconstruye la trayectoria futura caminando sobre la esfera:
+        en cada paso avanza min_angle_dist en la dirección del símbolo.
+        Devuelve puntos (x, y, z) unitarios. Se detiene en el primer PEN_UP.
+        """
+        p = self._unit(origin)
+        points = []
+        step = self.min_angle_dist
+        for s in symbols:
+            if s == self.pen_up:
+                break
+            n, e = self._frame(p)
+            ang = s * 2 * np.pi / self.k_dir
+            d = np.cos(ang) * e + np.sin(ang) * n
+            p = p * np.cos(step) + d * np.sin(step)
+            p = p / np.linalg.norm(p)
+            points.append((float(p[0]), float(p[1]), float(p[2])))
+        return points
