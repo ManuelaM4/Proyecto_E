@@ -29,21 +29,93 @@ UPDATE_MS = 200
 TEMPERATURE = 4.0
 TOP_N = 8
 
-# --- TRAZOS SUAVES (Estilo caligráfico para Glifo) ---
-# Formato: (lista de puntos (x,y) normalizados en 100x100)
+# --- TRAZOS SUAVES PARA LA ANIMACIÓN (Formato: [(x,y), ...]) ---
 TRAZOS_GUIA = {
-    "a": [[(60, 50), (40, 30), (20, 50), (20, 70), (40, 90), (60, 70), (60, 30), (60, 90)]],
-    "b": [[(20, 10), (20, 90), (20, 70), (40, 50), (60, 60), (60, 80), (40, 90), (20, 90)]],
+    "a": [[(60, 40), (40, 30), (30, 50), (30, 70), (50, 90), (70, 70), (70, 50), (70, 20), (70, 90)]],
+    "b": [[(30, 10), (30, 90), (30, 70), (50, 50), (70, 50), (70, 70), (50, 90), (30, 90)]],
     "c": [[(70, 30), (50, 20), (30, 30), (20, 50), (20, 70), (30, 90), (50, 90), (70, 70)]],
-    "d": [[(80, 10), (80, 90), (60, 80), (40, 60), (40, 40), (60, 20), (80, 30), (80, 90)]],
-    "e": [[(30, 60), (70, 60), (70, 30), (50, 20), (30, 30), (30, 70), (50, 90), (70, 80)]],
+    "d": [[(70, 10), (70, 90), (50, 90), (30, 70), (30, 50), (50, 30), (70, 30), (70, 90)]],
+    "e": [[(30, 60), (70, 60), (70, 40), (50, 30), (30, 40), (30, 60), (50, 80), (70, 80)]],
     "i": [[(50, 30), (50, 90)], [(50, 15), (50, 15)]],
     "o": [[(50, 20), (70, 40), (70, 60), (50, 80), (30, 60), (30, 40), (50, 20)]],
-    "u": [[(20, 30), (20, 70), (40, 90), (60, 70), (60, 30), (80, 30), (80, 90)]],
-    "x": [[(20, 20), (80, 80)], [(80, 20), (20, 80)]],
-    "l": [[(50, 10), (50, 90)]],
-    "t": [[(50, 20), (50, 90)], [(20, 50), (80, 50)]],
+    "u": [[(30, 30), (30, 70), (50, 90), (70, 70), (70, 30), (70, 90)]],
 }
+
+class GuiaAnimada:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.after_id = None
+        self.color = SUCCESS
+        self.trazos = []
+        self.trazo_idx = 0
+        self.punto_idx = 0
+        self.puntos_dibujados = []
+
+    def dibujar_fondo(self):
+        self.canvas.delete("all")
+        # Cuadrícula de fondo
+        self.canvas.create_line(20, 30, 220, 30, fill="#e2e8f0", width=1, dash=(2, 4))
+        self.canvas.create_line(20, 90, 220, 90, fill="#e2e8f0", width=1, dash=(2, 4))
+        self.canvas.create_line(20, 150, 220, 150, fill="#e2e8f0", width=1, dash=(2, 4))
+
+    def iniciar(self, letra, color=SUCCESS):
+        self.detener()
+        self.color = color
+        self.trazos = TRAZOS_GUIA.get(letra, [])
+        self.trazo_idx = 0
+        self.punto_idx = 0
+        self.puntos_dibujados = []
+        self.dibujar_fondo()
+
+        if not self.trazos:
+            self.canvas.create_text(120, 90, text=letra, font=("Arial", 80, "bold"), fill="#cbd5e1")
+            return
+
+        # Dibujar números al inicio de cada trazo
+        for i, trazo in enumerate(self.trazos):
+            x, y = trazo[0]
+            x, y = 20 + x * 2.0, 30 + y * 1.2
+            self.canvas.create_oval(x-10, y-10, x+10, y+10, fill=self.color, outline="")
+            self.canvas.create_text(x, y, text=str(i+1), font=("Arial", 12, "bold"), fill="white")
+
+        self._animar()
+
+    def _animar(self):
+        if self.trazo_idx >= len(self.trazos):
+            self.canvas.delete("punto")
+            return
+
+        trazo = self.trazos[self.trazo_idx]
+        
+        if self.punto_idx == 0:
+            self.puntos_dibujados = []
+        
+        # Agregar el punto actual
+        p = trazo[self.punto_idx]
+        x, y = 20 + p[0] * 2.0, 30 + p[1] * 1.2
+        self.puntos_dibujados.append((x, y))
+
+        # Redibujar la línea animada
+        self.canvas.delete("linea")
+        if len(self.puntos_dibujados) > 1:
+            flat = [c for p in self.puntos_dibujados for c in p]
+            self.canvas.create_line(*flat, fill=self.color, width=4, smooth=True, capstyle="round", joinstyle="round", tags="linea")
+        
+        # Dibujar el punto rojo en el extremo
+        self.canvas.delete("punto")
+        self.canvas.create_oval(x-5, y-5, x+5, y+5, fill="#ef4444", outline="white", tags="punto")
+
+        self.punto_idx += 1
+        if self.punto_idx >= len(trazo):
+            self.trazo_idx += 1
+            self.punto_idx = 0
+            
+        self.after_id = self.canvas.after(50, self._animar)
+
+    def detener(self):
+        if self.after_id:
+            self.canvas.after_cancel(self.after_id)
+            self.after_id = None
 
 # ======================================================================
 # Ventana A · Menú principal
@@ -152,88 +224,6 @@ class MainMenu(ctk.CTkFrame):
         btn.bind("<Enter>", on_enter)
         btn.bind("<Leave>", on_leave)
         return shadow
-
-# ======================================================================
-# Funciones de animación de la guía (Estilo Glifo)
-# ======================================================================
-class GuiaAnimada:
-    def __init__(self, canvas):
-        self.canvas = canvas
-        self.trazo_actual = None
-        self.letra = None
-        self.indice_punto = 0
-        self.animando = False
-        self._after_id = None
-
-    def dibujar_fondo(self):
-        c = self.canvas
-        c.delete("all")
-        # Dibujar cuadrícula de fondo (ascendente, base, etc.)
-        c.create_line(20, 30, 220, 30, fill="#e2e8f0", width=1, dash=(2, 4))
-        c.create_line(20, 90, 220, 90, fill="#e2e8f0", width=1, dash=(2, 4))
-        c.create_line(20, 150, 220, 150, fill="#e2e8f0", width=1, dash=(2, 4))
-
-    def iniciar(self, letra, color=SUCCESS):
-        self.detener()
-        self.letra = letra
-        self.color = color
-        self.dibujar_fondo()
-        
-        if letra not in TRAZOS_GUIA:
-            self.canvas.create_text(120, 90, text=letra, font=("Arial", 80, "bold"), fill="#cbd5e1")
-            return
-        
-        self.trazos = TRAZOS_GUIA[letra]
-        self.trazo_idx = 0
-        self.punto_idx = 0
-        self.animando = True
-        
-        # Dibujar los números de cada trazo
-        for i, trazo in enumerate(self.trazos):
-            x0, y0 = trazo[0]
-            x0 = 20 + x0 * 2.0
-            y0 = 30 + y0 * 1.2
-            self.canvas.create_oval(x0-10, y0-10, x0+10, y0+10, fill=self.color, outline="")
-            self.canvas.create_text(x0, y0, text=str(i+1), font=("Arial", 12, "bold"), fill="white")
-        
-        self._animar_paso()
-
-    def _animar_paso(self):
-        if not self.animando: return
-        if self.trazo_idx >= len(self.trazos):
-            self.animando = False
-            return
-        
-        trazo = self.trazos[self.trazo_idx]
-        if self.punto_idx >= len(trazo):
-            self.trazo_idx += 1
-            self.punto_idx = 0
-            self._animar_paso()
-            return
-        
-        # Dibujar la línea hasta el punto actual
-        puntos_visibles = trazo[:self.punto_idx+1]
-        xs = [20 + p[0] * 2.0 for p in puntos_visibles]
-        ys = [30 + p[1] * 1.2 for p in puntos_visibles]
-        
-        self.canvas.delete("linea_animada")
-        if len(xs) > 1:
-            self.canvas.create_line(xs, ys, fill=self.color, width=4, smooth=True, capstyle="round", joinstyle="round", tags="linea_animada")
-        
-        # Dibujar el punto animado al final
-        self.canvas.delete("punto_animado")
-        x_actual, y_actual = xs[-1], ys[-1]
-        self.canvas.create_oval(x_actual-5, y_actual-5, x_actual+5, y_actual+5, fill="#ef4444", outline="white", tags="punto_animado")
-        
-        self.punto_idx += 1
-        self._after_id = self.canvas.after(50, self._animar_paso)
-
-    def detener(self):
-        self.animando = False
-        if self._after_id:
-            self.canvas.after_cancel(self._after_id)
-            self._after_id = None
-
 
 # ======================================================================
 # Ventana C · Modo 3D
@@ -385,7 +375,7 @@ class Window3D(ctk.CTkFrame):
         self.guia_titulo.configure(text=f"Así se traza la «{letra}»")
         self.guia_anim.iniciar(letra, SUCCESS)
         if letra in TRAZOS_GUIA:
-            self.guia_texto.configure(text="Sigue el punto rojo.\n1 trazo continuo.")
+            self.guia_texto.configure(text="Sigue el punto rojo.\nAsí se hace el trazo.")
         else:
             self.guia_texto.configure(text="Esta letra no tiene guía animada.")
 
@@ -821,7 +811,7 @@ class Window2D(ctk.CTkFrame):
         self.guia_titulo.configure(text=f"Así se traza la «{letra}»")
         self.guia_anim.iniciar(letra, ACCENT)
         if letra in TRAZOS_GUIA:
-            self.guia_texto.configure(text="Sigue el punto rojo.\n1 trazo continuo.")
+            self.guia_texto.configure(text="Sigue el punto rojo.\nAsí se hace el trazo.")
         else:
             self.guia_texto.configure(text="Esta letra no tiene guía animada.")
 
