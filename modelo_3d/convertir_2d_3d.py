@@ -6,7 +6,7 @@ print("[convertir] archivo cargado:", __file__, flush=True)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BASE)
-RUTA_2D = os.path.join(ROOT, "modelo_2d", "glifo-dataset-2026-11-12.json")
+RUTA_2D = os.path.join(ROOT, "modelo_2d", "glifo-dataset-2026-11-15.json")
 OUT = os.path.join(BASE, "glifo-3d.json")
 OUT_AUG = os.path.join(BASE, "glifo-3d-aug.json")
 
