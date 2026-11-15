@@ -267,8 +267,8 @@ class Window3D(ctk.CTkFrame):
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(18, 10))
         ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17,
-                      fg_color=CARD, text_color=TEXT, hover_color="#e6e8f2",
-                      command=self.on_back).pack(side="left")
+              fg_color="#6366f1", text_color="white", hover_color="#4f46e5",
+              command=self.on_back).pack(side="left")
         ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"),
                      text_color=TEXT).pack(side="left", padx=(16, 8))
         ctk.CTkLabel(header, text="Modo 3D", font=ctk.CTkFont(size=13, weight="bold"),
@@ -764,8 +764,8 @@ class Window2D(ctk.CTkFrame):
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(18, 10))
         ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17,
-                      fg_color=CARD, text_color=TEXT, hover_color="#e6e8f2",
-                      command=self.on_back).pack(side="left")
+              fg_color="#6366f1", text_color="white", hover_color="#4f46e5",
+              command=self.on_back).pack(side="left")
         ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"),
                      text_color=TEXT).pack(side="left", padx=(16, 8))
         ctk.CTkLabel(header, text="Modo 2D", font=ctk.CTkFont(size=13, weight="bold"),
