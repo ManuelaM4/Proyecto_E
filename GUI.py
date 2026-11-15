@@ -14,7 +14,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 MODEL_2D = os.path.join(BASE, "modelo_2d", "models_2d.json")
 MODEL_3D = os.path.join(BASE, "modelo_3d", "models_3d.json")
 MIN_DIST_2D = 15.0
-MIN_ANGLE_3D = 0.03     # debe coincidir con el usado en train_3d.py
+MIN_ANGLE_3D = 0.03     
 BG, CARD, TEXT, MUTED = "#f0f4f8", "#ffffff", "#1e293b", "#64748b"
 ACCENT, ACCENT_SOFT, TILE, BAR_OFF = "#2563eb", "#60a5fa", "#e0f2fe", "#e2e8f0"
 INK, SURFACE, SURFACE_EDGE, DANGER = "#0f172a", "#f8fafc", "#e2e8f0", "#ef4444"
@@ -29,6 +29,21 @@ UPDATE_MS = 200
 TEMPERATURE = 4.0
 TOP_N = 8
 
+# --- TRAZOS SUAVES (Estilo caligráfico para Glifo) ---
+# Formato: (lista de puntos (x,y) normalizados en 100x100)
+TRAZOS_GUIA = {
+    "a": [[(60, 50), (40, 30), (20, 50), (20, 70), (40, 90), (60, 70), (60, 30), (60, 90)]],
+    "b": [[(20, 10), (20, 90), (20, 70), (40, 50), (60, 60), (60, 80), (40, 90), (20, 90)]],
+    "c": [[(70, 30), (50, 20), (30, 30), (20, 50), (20, 70), (30, 90), (50, 90), (70, 70)]],
+    "d": [[(80, 10), (80, 90), (60, 80), (40, 60), (40, 40), (60, 20), (80, 30), (80, 90)]],
+    "e": [[(30, 60), (70, 60), (70, 30), (50, 20), (30, 30), (30, 70), (50, 90), (70, 80)]],
+    "i": [[(50, 30), (50, 90)], [(50, 15), (50, 15)]],
+    "o": [[(50, 20), (70, 40), (70, 60), (50, 80), (30, 60), (30, 40), (50, 20)]],
+    "u": [[(20, 30), (20, 70), (40, 90), (60, 70), (60, 30), (80, 30), (80, 90)]],
+    "x": [[(20, 20), (80, 80)], [(80, 20), (20, 80)]],
+    "l": [[(50, 10), (50, 90)]],
+    "t": [[(50, 20), (50, 90)], [(20, 50), (80, 50)]],
+}
 
 # ======================================================================
 # Ventana A · Menú principal
@@ -36,50 +51,38 @@ TOP_N = 8
 class MainMenu(ctk.CTkFrame):
     def __init__(self, master, on_2d, on_3d):
         super().__init__(master, fg_color=BG)
-
         self.bg_canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
         self.bg_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.bg_canvas.bind("<Configure>", self._on_canvas_resize)
-
         main_container = ctk.CTkFrame(self, fg_color="transparent")
         main_container.place(relx=0.5, rely=0.45, anchor="center")
-
         ctk.CTkLabel(main_container, text="UNIVERSIDAD DE LOS LLANOS", text_color=ACCENT,
                      font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold")).pack()
-
         title_frame = ctk.CTkFrame(main_container, fg_color="transparent")
         title_frame.pack(pady=(5, 0))
         ctk.CTkLabel(title_frame, text="Reconocedor ", text_color=TEXT,
                      font=ctk.CTkFont(family="Segoe UI", size=46, weight="bold")).pack(side="left")
         ctk.CTkLabel(title_frame, text="HMM", text_color=ACCENT,
                      font=ctk.CTkFont(family="Segoe UI", size=46, weight="bold")).pack(side="left")
-
         ctk.CTkLabel(main_container, text="Trazos bidimensionales y esféricos", text_color=MUTED,
                      font=ctk.CTkFont(family="Segoe UI", size=18)).pack(pady=(0, 40))
-
         cards_frame = ctk.CTkFrame(main_container, fg_color="transparent")
         cards_frame.pack()
-
         self._card_2d = self._create_card(
             parent=cards_frame, title="Modo 2D", subtitle="Plano cartesiano",
             btn_text="Ingresar al Lienzo", cmd=on_2d,
             theme_color=ACCENT, bg_color="#f4f7ff", is_active=True
         )
         self._card_2d.pack(side="left", padx=20)
-
         self._card_3d = self._create_card(
             parent=cards_frame, title="Modo 3D", subtitle="Superficie esférica",
             btn_text="Ingresar al Lienzo", cmd=on_3d,
             theme_color=SUCCESS, bg_color="#f2fdf6", is_active=True
         )
         self._card_3d.pack(side="left", padx=20)
-
         ctk.CTkLabel(self, text="Procesos Estocásticos · 603504 · 5.º Semestre", text_color=MUTED,
                      font=ctk.CTkFont(family="Segoe UI", size=12)).pack(side="bottom", pady=20)
-
-    def _on_canvas_resize(self, event):
-        self._draw_background_pattern(event.width, event.height)
-
+    def _on_canvas_resize(self, event): self._draw_background_pattern(event.width, event.height)
     def _draw_background_pattern(self, w, h):
         self.bg_canvas.delete("all")
         letras = ["a", "b", "c", "x", "y", "z", "π", "λ", "α", "β", "∑", "∫"]
@@ -92,61 +95,46 @@ class MainMenu(ctk.CTkFrame):
                 color = colores_fondo[idx % len(colores_fondo)]
                 size = 50 + (idx % 4) * 15
                 offset_x = (spacing // 2) if (y // spacing) % 2 == 0 else 0
-                self.bg_canvas.create_text(x + offset_x, y, text=char, fill=color,
-                                           font=("Segoe UI", size, "bold"))
+                self.bg_canvas.create_text(x + offset_x, y, text=char, fill=color, font=("Segoe UI", size, "bold"))
                 idx += 1
-
         pts_top = []
         for x in range(0, w + 20, 20):
             y = 100 + math.sin(x / 150) * 40
             pts_top.extend([x, y])
         self.bg_canvas.create_line(*pts_top, fill="#cbd5e1", width=3, smooth=True)
-
         pts_bot = []
         for x in range(0, w + 20, 20):
             y = (h - 100) + math.cos(x / 120) * 40
             pts_bot.extend([x, y])
         self.bg_canvas.create_line(*pts_bot, fill="#cbd5e1", width=3, smooth=True)
-
     def _create_card(self, parent, title, subtitle, btn_text, cmd, theme_color, bg_color, is_active):
         shadow = ctk.CTkFrame(parent, fg_color="#e2e8f0", corner_radius=28, width=324, height=454)
         shadow.pack_propagate(False)
-
-        card = ctk.CTkFrame(shadow, fg_color=bg_color, corner_radius=26, width=320, height=450,
-                            border_width=2, border_color=bg_color)
+        card = ctk.CTkFrame(shadow, fg_color=bg_color, corner_radius=26, width=320, height=450, border_width=2, border_color=bg_color)
         card.place(relx=0.5, rely=0.5, anchor="center")
         card.pack_propagate(False)
-
         def on_enter(e):
             card.configure(border_color=theme_color)
             btn.configure(fg_color=theme_color if is_active else DANGER)
             btn.configure(text_color="white")
             canvas.itemconfigure("trazo", width=6)
-
         def on_leave(e):
             card.configure(border_color=bg_color)
-            if is_active:
-                btn.configure(fg_color=theme_color, text_color="white")
-            else:
-                btn.configure(fg_color="#fee2e2", text_color=DANGER)
+            if is_active: btn.configure(fg_color=theme_color, text_color="white")
+            else: btn.configure(fg_color="#fee2e2", text_color=DANGER)
             canvas.itemconfigure("trazo", width=4)
-
         for widget in (card, shadow):
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
-
         canvas = tk.Canvas(card, width=240, height=200, bg=bg_color, highlightthickness=0)
         canvas.pack(pady=(30, 10))
-
         if title == "Modo 2D":
             canvas.create_line(30, 180, 210, 180, fill="#bfdbfe", width=3)
             canvas.create_line(30, 20, 30, 180, fill="#bfdbfe", width=3)
             pts = [(50, 150), (70, 110), (100, 80), (130, 100), (160, 60), (190, 70)]
             for i in range(len(pts) - 1):
-                canvas.create_line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1],
-                                   fill="#bfdbfe", width=2, dash=(2, 4))
-            canvas.create_line(*[c for p in pts for c in p], fill=theme_color, width=4,
-                               smooth=True, capstyle="round", tags="trazo")
+                canvas.create_line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], fill="#bfdbfe", width=2, dash=(2, 4))
+            canvas.create_line(*[c for p in pts for c in p], fill=theme_color, width=4, smooth=True, capstyle="round", tags="trazo")
             canvas.create_oval(185, 65, 195, 75, fill=DANGER, outline="white", width=2)
         else:
             canvas.create_oval(60, 40, 180, 160, outline="#bbf7d0", width=3, fill="#dcfce7")
@@ -154,54 +142,114 @@ class MainMenu(ctk.CTkFrame):
             canvas.create_arc(60, 60, 180, 140, start=180, extent=180, style="arc", outline="#86efac", width=4, dash=(4, 4))
             canvas.create_line(90, 50, 120, 110, 150, 70, fill=theme_color, width=4, smooth=True, capstyle="round", tags="trazo")
             canvas.create_oval(145, 65, 155, 75, fill=DANGER, outline="white", width=2)
-
-        ctk.CTkLabel(card, text=title, text_color=TEXT,
-                     font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold")).pack(pady=(10, 2))
-        ctk.CTkLabel(card, text=subtitle, text_color=MUTED,
-                     font=ctk.CTkFont(family="Segoe UI", size=14)).pack()
-
+        ctk.CTkLabel(card, text=title, text_color=TEXT, font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold")).pack(pady=(10, 2))
+        ctk.CTkLabel(card, text=subtitle, text_color=MUTED, font=ctk.CTkFont(family="Segoe UI", size=14)).pack()
         btn_color = theme_color if is_active else "#fee2e2"
         txt_color = "white" if is_active else DANGER
         hover_color = "#1d4ed8" if is_active else DANGER
-
-        btn = ctk.CTkButton(card, text=btn_text, width=220, height=48, corner_radius=24,
-                            fg_color=btn_color, hover_color=hover_color,
-                            text_color=txt_color,
-                            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
-                            command=cmd)
+        btn = ctk.CTkButton(card, text=btn_text, width=220, height=48, corner_radius=24, fg_color=btn_color, hover_color=hover_color, text_color=txt_color, font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"), command=cmd)
         btn.pack(side="bottom", pady=30)
-
         btn.bind("<Enter>", on_enter)
         btn.bind("<Leave>", on_leave)
-
         return shadow
+
+# ======================================================================
+# Funciones de animación de la guía (Estilo Glifo)
+# ======================================================================
+class GuiaAnimada:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.trazo_actual = None
+        self.letra = None
+        self.indice_punto = 0
+        self.animando = False
+        self._after_id = None
+
+    def dibujar_fondo(self):
+        c = self.canvas
+        c.delete("all")
+        # Dibujar cuadrícula de fondo (ascendente, base, etc.)
+        c.create_line(20, 30, 220, 30, fill="#e2e8f0", width=1, dash=(2, 4))
+        c.create_line(20, 90, 220, 90, fill="#e2e8f0", width=1, dash=(2, 4))
+        c.create_line(20, 150, 220, 150, fill="#e2e8f0", width=1, dash=(2, 4))
+
+    def iniciar(self, letra, color=SUCCESS):
+        self.detener()
+        self.letra = letra
+        self.color = color
+        self.dibujar_fondo()
+        
+        if letra not in TRAZOS_GUIA:
+            self.canvas.create_text(120, 90, text=letra, font=("Arial", 80, "bold"), fill="#cbd5e1")
+            return
+        
+        self.trazos = TRAZOS_GUIA[letra]
+        self.trazo_idx = 0
+        self.punto_idx = 0
+        self.animando = True
+        
+        # Dibujar los números de cada trazo
+        for i, trazo in enumerate(self.trazos):
+            x0, y0 = trazo[0]
+            x0 = 20 + x0 * 2.0
+            y0 = 30 + y0 * 1.2
+            self.canvas.create_oval(x0-10, y0-10, x0+10, y0+10, fill=self.color, outline="")
+            self.canvas.create_text(x0, y0, text=str(i+1), font=("Arial", 12, "bold"), fill="white")
+        
+        self._animar_paso()
+
+    def _animar_paso(self):
+        if not self.animando: return
+        if self.trazo_idx >= len(self.trazos):
+            self.animando = False
+            return
+        
+        trazo = self.trazos[self.trazo_idx]
+        if self.punto_idx >= len(trazo):
+            self.trazo_idx += 1
+            self.punto_idx = 0
+            self._animar_paso()
+            return
+        
+        # Dibujar la línea hasta el punto actual
+        puntos_visibles = trazo[:self.punto_idx+1]
+        xs = [20 + p[0] * 2.0 for p in puntos_visibles]
+        ys = [30 + p[1] * 1.2 for p in puntos_visibles]
+        
+        self.canvas.delete("linea_animada")
+        if len(xs) > 1:
+            self.canvas.create_line(xs, ys, fill=self.color, width=4, smooth=True, capstyle="round", joinstyle="round", tags="linea_animada")
+        
+        # Dibujar el punto animado al final
+        self.canvas.delete("punto_animado")
+        x_actual, y_actual = xs[-1], ys[-1]
+        self.canvas.create_oval(x_actual-5, y_actual-5, x_actual+5, y_actual+5, fill="#ef4444", outline="white", tags="punto_animado")
+        
+        self.punto_idx += 1
+        self._after_id = self.canvas.after(50, self._animar_paso)
+
+    def detener(self):
+        self.animando = False
+        if self._after_id:
+            self.canvas.after_cancel(self._after_id)
+            self._after_id = None
 
 
 # ======================================================================
 # Ventana C · Modo 3D
 # ======================================================================
 class Window3D(ctk.CTkFrame):
-    """
-    Esfera con rotación y zoom.
-    - Los trazos se guardan en el marco del OBJETO (no de la pantalla).
-    - self.R es la rotación de cámara: p_cam = R @ p_obj.
-    - Al reconocer se usa el marco de CÁMARA, así "arriba" siempre es
-      arriba en pantalla y lo que el usuario ve es lo que se clasifica.
-    Controles: clic izq. dibuja · clic der. (o Shift+arrastrar) rota · rueda = zoom.
-    """
     ZOOM_MIN, ZOOM_MAX = 0.5, 2.5
-
     def __init__(self, master, recognizer, on_back):
         super().__init__(master, fg_color=BG)
         self.rec, self.on_back = recognizer, on_back
-
         self.size = 500
         self.offset = (0, 0)
         self._last_dim = None
         self.R = np.eye(3)
         self.zoom = 1.0
-        self.strokes = []          # trazos en marco del objeto: lista de listas de np.array(3)
-        self.items = []            # ids de canvas por trazo (lista de listas)
+        self.strokes = []
+        self.items = []
         self.drawing = False
         self._rotating = False
         self._rot_last = (0, 0)
@@ -210,35 +258,27 @@ class Window3D(ctk.CTkFrame):
         self.proj_item = None
         self.icons, self.slots = {}, []
         self._grid = self._build_grid()
-
+        self.letra_actual = None
+        self.guia_anim = None
         self._build()
         self.reset_panel()
-
         top = self.winfo_toplevel()
         top.bind("<Control-z>", lambda e: self.undo() if self.winfo_ismapped() else None)
         top.bind("<Delete>", lambda e: self.clear_canvas() if self.winfo_ismapped() else None)
 
-    # ------------------------------------------------------------------ iconos
     @staticmethod
     def _make_icon_image(letter, px=128):
-        S = 4
-        n = px * S
+        S = 4; n = px * S
         img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((0, 0, n - 1, n - 1), radius=int(n * 0.24), fill=TILE)
         font = None
-        for name in ("segoeuib.ttf", "arialbd.ttf", "calibrib.ttf", "DejaVuSans-Bold.ttf",
-                     "Arial Bold.ttf", "Helvetica.ttc", "LiberationSans-Bold.ttf"):
-            try:
-                font = ImageFont.truetype(name, int(n * 0.62))
-                break
-            except OSError:
-                continue
+        for name in ("segoeuib.ttf", "arialbd.ttf", "calibrib.ttf", "DejaVuSans-Bold.ttf", "Arial Bold.ttf", "Helvetica.ttc", "LiberationSans-Bold.ttf"):
+            try: font = ImageFont.truetype(name, int(n * 0.62)); break
+            except OSError: continue
         if font is None:
-            try:
-                font = ImageFont.load_default(size=int(n * 0.62))
-            except TypeError:
-                font = ImageFont.load_default()
+            try: font = ImageFont.load_default(size=int(n * 0.62))
+            except TypeError: font = ImageFont.load_default()
         bb = d.textbbox((0, 0), letter, font=font)
         w, h = bb[2] - bb[0], bb[3] - bb[1]
         d.text(((n - w) / 2 - bb[0], (n - h) / 2 - bb[1]), letter, font=font, fill=SUCCESS)
@@ -247,98 +287,78 @@ class Window3D(ctk.CTkFrame):
     def _icon(self, letter):
         if letter not in self.icons:
             path = os.path.join(ICON_DIR, f"{letter}.png")
-            if letter == "_vacio":
-                img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
-            elif os.path.exists(path):
-                img = Image.open(path)
-            else:
-                img = self._make_icon_image(letter)
+            if letter == "_vacio": img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+            elif os.path.exists(path): img = Image.open(path)
+            else: img = self._make_icon_image(letter)
             self.icons[letter] = ctk.CTkImage(light_image=img, dark_image=img, size=(40, 40))
         return self.icons[letter]
 
-    # --------------------------------------------------------------------- UI
     def _build(self):
-        # uniform: las columnas mantienen su proporción sin importar el contenido
-        # (evita que el lienzo cambie de ancho cuando cambian los textos)
-        self.grid_columnconfigure(0, weight=2, uniform="cols")
-        self.grid_columnconfigure(1, weight=1, uniform="cols")
+        self.grid_columnconfigure(0, weight=0, minsize=300)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=0, minsize=320)
         self.grid_rowconfigure(1, weight=1)
 
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(18, 10))
-        ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17,
-              fg_color="#6366f1", text_color="white", hover_color="#4f46e5",
-              command=self.on_back).pack(side="left")
-        ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color=TEXT).pack(side="left", padx=(16, 8))
-        ctk.CTkLabel(header, text="Modo 3D", font=ctk.CTkFont(size=13, weight="bold"),
-                     text_color="white", fg_color=SUCCESS, corner_radius=10,
-                     width=70, height=26).pack(side="left")
+        header.grid(row=0, column=0, columnspan=3, sticky="ew", padx=24, pady=(18, 10))
+        ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17, fg_color="#6366f1", text_color="white", hover_color="#4f46e5", command=self.on_back).pack(side="left")
+        ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"), text_color=TEXT).pack(side="left", padx=(16, 8))
+        ctk.CTkLabel(header, text="Modo 3D", font=ctk.CTkFont(size=13, weight="bold"), text_color="white", fg_color=SUCCESS, corner_radius=10, width=70, height=26).pack(side="left")
 
-        left = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
-        left.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(0, 24))
+        col_guia = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
+        col_guia.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(0, 24))
+        ctk.CTkLabel(col_guia, text="Guía de trazo", font=ctk.CTkFont(size=18, weight="bold"), text_color=TEXT).pack(pady=(20, 10))
+        self.guia_frame = ctk.CTkFrame(col_guia, fg_color="#f8fafc", corner_radius=15, border_width=2, border_color="#e2e8f0")
+        self.guia_frame.pack(fill="x", padx=15, pady=10)
+        self.guia_titulo = ctk.CTkLabel(self.guia_frame, text="Dibuja una letra", font=ctk.CTkFont(size=16, weight="bold"), text_color=TEXT)
+        self.guia_titulo.pack(pady=(15, 5))
+        self.guia_canvas = tk.Canvas(self.guia_frame, bg="#f8fafc", width=240, height=180, highlightthickness=0)
+        self.guia_canvas.pack(pady=5)
+        self.guia_texto = ctk.CTkLabel(self.guia_frame, text="", font=ctk.CTkFont(size=13), text_color=MUTED, wraplength=240)
+        self.guia_texto.pack(pady=(0, 15))
+        self.btn_rep_guia = ctk.CTkButton(col_guia, text="↻ Repetir", width=120, height=36, fg_color=TILE, text_color=TEXT, hover_color="#dcdff5", command=self.repetir_guia)
+        self.btn_rep_guia.pack(pady=20)
+        self.guia_anim = GuiaAnimada(self.guia_canvas)
 
-        tools = ctk.CTkFrame(left, fg_color="transparent")
+        col_lienzo = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
+        col_lienzo.grid(row=1, column=1, sticky="nsew", padx=12, pady=(0, 24))
+        tools = ctk.CTkFrame(col_lienzo, fg_color="transparent")
         tools.pack(fill="x", padx=18, pady=(16, 10))
-
-        ctk.CTkButton(tools, text="↶  Deshacer", width=110, height=36, corner_radius=18,
-                      fg_color=TILE, text_color=TEXT, hover_color="#dcdff5",
-                      command=self.undo).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(tools, text="Limpiar lienzo", width=130, height=36, corner_radius=18,
-                      fg_color=DANGER, hover_color="#c93a3f", text_color="white",
-                      command=self.clear_canvas).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(tools, text="⟳  Vista", width=90, height=36, corner_radius=18,
-                      fg_color=TILE, text_color=TEXT, hover_color="#dcdff5",
-                      command=self.reset_view).pack(side="left", padx=(0, 8))
-
-        self.canvas = tk.Canvas(left, bg=CARD, highlightthickness=0, cursor="crosshair")
+        ctk.CTkButton(tools, text="↶  Deshacer", width=110, height=36, corner_radius=18, fg_color=TILE, text_color=TEXT, hover_color="#dcdff5", command=self.undo).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(tools, text="Limpiar lienzo", width=130, height=36, corner_radius=18, fg_color=DANGER, hover_color="#c93a3f", text_color="white", command=self.clear_canvas).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(tools, text="⟳  Vista", width=90, height=36, corner_radius=18, fg_color=TILE, text_color=TEXT, hover_color="#dcdff5", command=self.reset_view).pack(side="left", padx=(0, 8))
+        self.canvas = tk.Canvas(col_lienzo, bg=CARD, highlightthickness=0, cursor="crosshair")
         self.canvas.pack(fill="both", expand=True, padx=18, pady=(0, 8))
-
         self.canvas.bind("<Configure>", self._on_canvas_resize)
-        self.ring = self.canvas.create_oval(0, 0, 0, 0, outline=SUCCESS, width=2,
-                                            state="hidden", tags="ring")
+        self.ring = self.canvas.create_oval(0, 0, 0, 0, outline=SUCCESS, width=2, state="hidden", tags="ring")
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Motion>", lambda e: self._move_ring(e.x, e.y))
         self.canvas.bind("<Leave>", lambda e: self.canvas.itemconfigure(self.ring, state="hidden"))
-        # Rotación: botón derecho (Windows/Linux) o central (macOS)
         for b in (2, 3):
             self.canvas.bind(f"<ButtonPress-{b}>", self._start_rot)
             self.canvas.bind(f"<B{b}-Motion>", self._rot_motion)
             self.canvas.bind(f"<ButtonRelease-{b}>", self._end_rot)
-        # Zoom
         self.canvas.bind("<MouseWheel>", self.on_wheel)
         self.canvas.bind("<Button-4>", self.on_wheel)
         self.canvas.bind("<Button-5>", self.on_wheel)
-
-        # width fijo: el texto no puede cambiar el ancho de la columna
-        self.lbl_status = ctk.CTkLabel(left, text="", width=10, font=ctk.CTkFont(size=13),
-                                       text_color=MUTED)
-        self.lbl_status.pack(fill="x", padx=10, pady=(0, 14))
+        self.lbl_status = ctk.CTkLabel(col_lienzo, text="Clic izq.: dibujar  ·  Clic der.: rotar  ·  Rueda: zoom", font=ctk.CTkFont(size=13), text_color=MUTED)
+        self.lbl_status.pack(pady=(0, 14))
 
         right = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
-        right.grid(row=1, column=1, sticky="nsew", padx=(12, 24), pady=(0, 24))
+        right.grid(row=1, column=2, sticky="nsew", padx=(12, 24), pady=(0, 24))
         right.grid_columnconfigure(0, weight=1)
-
         hero = ctk.CTkFrame(right, fg_color=SUCCESS, corner_radius=18)
         hero.grid(row=0, column=0, sticky="ew", padx=18, pady=(18, 12))
-        self.lbl_hero = ctk.CTkLabel(hero, text="?", width=88, height=88, corner_radius=16,
-                                     fg_color="white", text_color=SUCCESS,
-                                     font=ctk.CTkFont(size=50, weight="bold"))
+        self.lbl_hero = ctk.CTkLabel(hero, text="?", width=88, height=88, corner_radius=16, fg_color="white", text_color=SUCCESS, font=ctk.CTkFont(size=50, weight="bold"))
         self.lbl_hero.pack(side="left", padx=16, pady=16)
         info = ctk.CTkFrame(hero, fg_color="transparent")
         info.pack(side="left", padx=6)
-        ctk.CTkLabel(info, text="Letra más probable", text_color="#dcdcff",
-                     font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.lbl_hero_p = ctk.CTkLabel(info, text="—", text_color="white", width=150, anchor="w",
-                                       font=ctk.CTkFont(size=32, weight="bold"))
+        ctk.CTkLabel(info, text="Letra más probable", text_color="#dcdcff", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.lbl_hero_p = ctk.CTkLabel(info, text="—", text_color="white", width=150, anchor="w", font=ctk.CTkFont(size=32, weight="bold"))
         self.lbl_hero_p.pack(anchor="w")
-
-        ctk.CTkLabel(right, text=f"Top {TOP_N} · P(carácter | O₁:t)", text_color=MUTED,
-                     font=ctk.CTkFont(size=12, weight="bold")
-                     ).grid(row=1, column=0, sticky="w", padx=24, pady=(0, 4))
-
+        ctk.CTkLabel(right, text=f"Top {TOP_N} · P(carácter | O₁:t)", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, sticky="w", padx=24, pady=(0, 4))
         lst = ctk.CTkFrame(right, fg_color="transparent")
         lst.grid(row=2, column=0, sticky="ew", padx=14, pady=(0, 16))
         lst.grid_columnconfigure(0, weight=1)
@@ -346,39 +366,44 @@ class Window3D(ctk.CTkFrame):
             row = ctk.CTkFrame(lst, fg_color=ROW_FIRST if i == 0 else "transparent", corner_radius=14)
             row.grid(row=i, column=0, sticky="ew", pady=2)
             row.grid_columnconfigure(3, weight=1)
-            rank = ctk.CTkLabel(row, text=str(i + 1), width=22, text_color=SUCCESS if i == 0 else MUTED,
-                                font=ctk.CTkFont(size=13, weight="bold"))
+            rank = ctk.CTkLabel(row, text=str(i + 1), width=22, text_color=SUCCESS if i == 0 else MUTED, font=ctk.CTkFont(size=13, weight="bold"))
             rank.grid(row=0, column=0, padx=(10, 2), pady=5)
             icon = ctk.CTkLabel(row, text="", image=self._icon("_vacio"), width=40, height=40)
             icon.grid(row=0, column=1, padx=(2, 8))
-            name = ctk.CTkLabel(row, text="·", width=26, text_color=SUCCESS if i == 0 else TEXT,
-                                font=ctk.CTkFont(size=22, weight="bold"))
+            name = ctk.CTkLabel(row, text="·", width=26, text_color=SUCCESS if i == 0 else TEXT, font=ctk.CTkFont(size=22, weight="bold"))
             name.grid(row=0, column=2, padx=(0, 10))
-            bar = ctk.CTkProgressBar(row, height=10, corner_radius=5, fg_color="#e9ebf6",
-                                     progress_color=SUCCESS if i == 0 else (ACCENT_SOFT if i < 3 else BAR_OFF))
+            bar = ctk.CTkProgressBar(row, height=10, corner_radius=5, fg_color="#e9ebf6", progress_color=SUCCESS if i == 0 else (ACCENT_SOFT if i < 3 else BAR_OFF))
             bar.grid(row=0, column=3, sticky="ew")
             bar.set(0)
-            pct = ctk.CTkLabel(row, text="—", width=64, anchor="e", text_color=TEXT,
-                               font=ctk.CTkFont(size=14, weight="bold" if i == 0 else "normal"))
+            pct = ctk.CTkLabel(row, text="—", width=64, anchor="e", text_color=TEXT, font=ctk.CTkFont(size=14, weight="bold" if i == 0 else "normal"))
             pct.grid(row=0, column=4, padx=(10, 12))
             self.slots.append({"letter": None, "icon": icon, "name": name, "bar": bar, "pct": pct})
 
-    # ------------------------------------------------------------- geometría
+    def _mostrar_guia(self, letra):
+        if letra == self.letra_actual: return
+        self.letra_actual = letra
+        self.guia_titulo.configure(text=f"Así se traza la «{letra}»")
+        self.guia_anim.iniciar(letra, SUCCESS)
+        if letra in TRAZOS_GUIA:
+            self.guia_texto.configure(text="Sigue el punto rojo.\n1 trazo continuo.")
+        else:
+            self.guia_texto.configure(text="Esta letra no tiene guía animada.")
+
+    def repetir_guia(self):
+        if self.letra_actual:
+            self.guia_anim.iniciar(self.letra_actual, SUCCESS)
+
     @staticmethod
     def _build_grid():
-        """Meridianos y paralelos en el marco del objeto (para que se vea la rotación)."""
         lines = []
         lat = np.radians(np.linspace(-90, 90, 37))
         for lon_deg in range(0, 360, 30):
             lon = np.radians(lon_deg)
-            lines.append(np.column_stack([np.cos(lat) * np.sin(lon), np.sin(lat),
-                                          np.cos(lat) * np.cos(lon)]))
+            lines.append(np.column_stack([np.cos(lat) * np.sin(lon), np.sin(lat), np.cos(lat) * np.cos(lon)]))
         lon = np.radians(np.linspace(0, 360, 73))
         for lat_deg in (-60, -30, 0, 30, 60):
             la = np.radians(lat_deg)
-            lines.append(np.column_stack([np.cos(la) * np.sin(lon),
-                                          np.full_like(lon, np.sin(la)),
-                                          np.cos(la) * np.cos(lon)]))
+            lines.append(np.column_stack([np.cos(la) * np.sin(lon), np.full_like(lon, np.sin(la)), np.cos(la) * np.cos(lon)]))
         return lines
 
     def _geom(self):
@@ -393,7 +418,6 @@ class Window3D(ctk.CTkFrame):
         return cx + p[0] * rr, cy - p[1] * rr
 
     def _map_to_sphere(self, mx, my):
-        """Pixel -> punto de la esfera en el marco de CÁMARA (siempre dentro del disco)."""
         cx, cy, rr = self._geom()
         nx = (mx - cx) / rr
         ny = -(my - cy) / rr
@@ -408,19 +432,15 @@ class Window3D(ctk.CTkFrame):
         return np.array([nx, ny, nz])
 
     def _visible_runs(self, cam):
-        """Divide una polilínea (marco cámara) en tramos visibles (z >= 0), en pantalla."""
         runs, cur = [], []
         for p in cam:
-            if p[2] >= -1e-6:
-                cur.append(self._cam_to_screen(p))
+            if p[2] >= -1e-6: cur.append(self._cam_to_screen(p))
             elif cur:
                 runs.append(cur)
                 cur = []
-        if cur:
-            runs.append(cur)
+        if cur: runs.append(cur)
         return runs
 
-    # ----------------------------------------------------------------- dibujo
     def _draw_stroke(self, idx):
         pts = np.asarray(self.strokes[idx], dtype=float)
         cam = pts @ self.R.T
@@ -428,14 +448,11 @@ class Window3D(ctk.CTkFrame):
         for run in self._visible_runs(cam):
             if len(run) >= 2:
                 flat = [c for q in run for c in q]
-                ids.append(self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True,
-                                                   splinesteps=8, capstyle="round",
-                                                   joinstyle="round", tags="ink"))
+                ids.append(self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True, splinesteps=8, capstyle="round", joinstyle="round", tags="ink"))
             else:
                 x, y = run[0]
                 r = BRUSH / 2.0
-                ids.append(self.canvas.create_oval(x - r, y - r, x + r, y + r,
-                                                   fill=INK, outline=INK, tags="ink"))
+                ids.append(self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=INK, outline=INK, tags="ink"))
         return ids
 
     def _redraw_scene(self):
@@ -443,13 +460,11 @@ class Window3D(ctk.CTkFrame):
         c.delete("surface")
         c.delete("ink")
         cx, cy, rr = self._geom()
-        c.create_oval(cx - rr, cy - rr, cx + rr, cy + rr,
-                      fill=SURFACE, outline=SURFACE_EDGE, width=2, tags="surface")
+        c.create_oval(cx - rr, cy - rr, cx + rr, cy + rr, fill=SURFACE, outline=SURFACE_EDGE, width=2, tags="surface")
         for line in self._grid:
             for run in self._visible_runs(line @ self.R.T):
                 if len(run) >= 2:
-                    c.create_line(*[v for q in run for v in q], fill="#d5dde8",
-                                  width=1, tags="surface")
+                    c.create_line(*[v for q in run for v in q], fill="#d5dde8", width=1, tags="surface")
         self.items = [self._draw_stroke(i) for i in range(len(self.strokes))]
         c.tag_lower("surface")
         c.tag_raise("proj")
@@ -457,8 +472,7 @@ class Window3D(ctk.CTkFrame):
 
     def _on_canvas_resize(self, event):
         dim = (event.width, event.height)
-        if dim == self._last_dim:
-            return
+        if dim == self._last_dim: return
         self._last_dim = dim
         self.size = max(200, min(event.width, event.height))
         self.offset = ((event.width - self.size) / 2, (event.height - self.size) / 2)
@@ -471,8 +485,7 @@ class Window3D(ctk.CTkFrame):
             ox, oy = self.offset
             x = ox + self.size / 2
             y = oy + self.size / 2
-            self.canvas.create_text(x, y, text="Dibuja aquí sobre la esfera",
-                                    fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
+            self.canvas.create_text(x, y, text="Dibuja aquí sobre la esfera", fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
 
     def _move_ring(self, x, y):
         r = BRUSH + 1
@@ -480,33 +493,25 @@ class Window3D(ctk.CTkFrame):
         self.canvas.itemconfigure(self.ring, state="normal")
         self.canvas.tag_raise("ring")
 
-    # --------------------------------------------------- rotación y zoom
-    def _start_rot(self, e):
-        self._rotating = True
-        self._rot_last = (e.x, e.y)
-
-    def _end_rot(self, e):
-        self._rotating = False
-
+    def _start_rot(self, e): self._rotating = True; self._rot_last = (e.x, e.y)
+    def _end_rot(self, e): self._rotating = False
     def _rot_motion(self, e):
         self._move_ring(e.x, e.y)
-        if self._rotating:
-            self._do_rot(e)
+        if self._rotating: self._do_rot(e)
 
     def _do_rot(self, e):
         lx, ly = self._rot_last
         dx, dy = e.x - lx, e.y - ly
         self._rot_last = (e.x, e.y)
-        if dx == 0 and dy == 0:
-            return
+        if dx == 0 and dy == 0: return
         _, _, rr = self._geom()
-        a, b = dx / rr, dy / rr           # la superficie sigue al cursor
+        a, b = dx / rr, dy / rr
         ca, sa = math.cos(a), math.sin(a)
         cb, sb = math.cos(b), math.sin(b)
         Ry = np.array([[ca, 0, sa], [0, 1, 0], [-sa, 0, ca]])
         Rx = np.array([[1, 0, 0], [0, cb, -sb], [0, sb, cb]])
         R = Rx @ Ry @ self.R
-        u, _, vt = np.linalg.svd(R)       # evita deriva numérica
+        u, _, vt = np.linalg.svd(R)
         self.R = u @ vt
         self._hide_projection()
         self._redraw_scene()
@@ -527,11 +532,8 @@ class Window3D(ctk.CTkFrame):
         self._redraw_scene()
         self.schedule_update()
 
-    # ---------------------------------------------------------------- eventos
     def on_press(self, e):
-        if e.state & 0x0001:              # Shift + arrastrar = rotar
-            self._start_rot(e)
-            return
+        if e.state & 0x0001: self._start_rot(e); return
         self.drawing = True
         self.canvas.delete("hint")
         p_obj = self.R.T @ self._map_to_sphere(e.x, e.y)
@@ -542,20 +544,15 @@ class Window3D(ctk.CTkFrame):
 
     def on_move(self, e):
         self._move_ring(e.x, e.y)
-        if self._rotating:
-            self._do_rot(e)
-            return
-        if not self.drawing or not self.strokes:
-            return
+        if self._rotating: self._do_rot(e); return
+        if not self.drawing or not self.strokes: return
         _, _, rr = self._geom()
         p_cam = self._map_to_sphere(e.x, e.y)
         stroke = self.strokes[-1]
         last_cam = self.R @ stroke[-1]
-        if np.linalg.norm(p_cam - last_cam) * rr < MIN_STEP:
-            return
+        if np.linalg.norm(p_cam - last_cam) * rr < MIN_STEP: return
         stroke.append(self.R.T @ p_cam)
-        for i in self.items[-1]:
-            self.canvas.delete(i)
+        for i in self.items[-1]: self.canvas.delete(i)
         self.items[-1] = self._draw_stroke(len(self.strokes) - 1)
         self.canvas.tag_raise("proj")
         self.canvas.tag_raise("ring")
@@ -568,15 +565,12 @@ class Window3D(ctk.CTkFrame):
         self.drawing = False
         self.do_update()
 
-    # ----------------------------------------------------------- reconocimiento
     def _data_strokes(self):
-        """Trazos en marco de cámara (lo que el usuario ve en pantalla)."""
         return [[tuple((self.R @ p) * 100.0) for p in s] for s in self.strokes]
 
     def _ranking(self, data):
         seq = self.rec.extractor.extract(data)
-        if not seq:
-            return []
+        if not seq: return []
         models = self.rec.classifier.models
         chars = list(models.keys())
         ll = np.array([models[c].log_likelihood(seq) for c in chars]) / TEMPERATURE
@@ -587,13 +581,11 @@ class Window3D(ctk.CTkFrame):
         return [(chars[i], float(p[i])) for i in order]
 
     def schedule_update(self):
-        if self._pending is None:
-            self._pending = self.after(UPDATE_MS, self.do_update)
+        if self._pending is None: self._pending = self.after(UPDATE_MS, self.do_update)
 
     def do_update(self):
         self._pending = None
-        if not self.strokes:
-            return
+        if not self.strokes: return
         data = self._data_strokes()
         ranking = self._ranking(data)
         if not ranking:
@@ -616,11 +608,11 @@ class Window3D(ctk.CTkFrame):
         best, pb = top[0]
         self.lbl_hero.configure(text=best)
         self.lbl_hero_p.configure(text=f"{100 * pb:.1f}%")
-        self.lbl_status.configure(text=f"Reconociendo como «{best}»  ·  clic der. rota · rueda zoom")
+        self.lbl_status.configure(text=f"Reconociendo como «{best}»")
+        self._mostrar_guia(best)
 
     def _hide_projection(self):
-        if self.proj_item is not None:
-            self.canvas.itemconfigure(self.proj_item, state="hidden")
+        if self.proj_item is not None: self.canvas.itemconfigure(self.proj_item, state="hidden")
 
     def _draw_projection(self, data):
         res = self.rec.autocomplete(data)
@@ -638,22 +630,19 @@ class Window3D(ctk.CTkFrame):
             return
         path = list(self._cam_to_screen(last))
         for p in res[1]:
-            if p[2] < 0:
-                break
+            if p[2] < 0: break
             path += list(self._cam_to_screen(p))
         if len(path) < 4:
             self._hide_projection()
             return
         if self.proj_item is None:
-            self.proj_item = self.canvas.create_line(*path, fill="#86efac", width=4, dash=(2, 7),
-                                                     capstyle="round", smooth=True, tags="proj")
+            self.proj_item = self.canvas.create_line(*path, fill="#86efac", width=4, dash=(2, 7), capstyle="round", smooth=True, tags="proj")
         else:
             self.canvas.coords(self.proj_item, *path)
             self.canvas.itemconfigure(self.proj_item, state="normal")
         self.canvas.tag_raise("ink")
         self.canvas.tag_raise("ring")
 
-    # ------------------------------------------------------------------ panel
     def reset_panel(self):
         self._last_key = None
         for slot in self.slots:
@@ -664,15 +653,17 @@ class Window3D(ctk.CTkFrame):
             slot["pct"].configure(text="—")
         self.lbl_hero.configure(text="?")
         self.lbl_hero_p.configure(text="—")
-        self.lbl_status.configure(
-            text="Clic izq.: dibujar  ·  Clic der. o Shift+arrastrar: rotar  ·  Rueda: zoom")
+        self.lbl_status.configure(text="Clic izq.: dibujar  ·  Clic der.: rotar  ·  Rueda: zoom")
+        self.letra_actual = None
+        self.guia_titulo.configure(text="Dibuja una letra")
+        self.guia_anim.detener()
+        self.guia_canvas.delete("all")
+        self.guia_texto.configure(text="")
 
     def undo(self):
-        if not self.strokes:
-            return
+        if not self.strokes: return
         self.strokes.pop()
-        for i in self.items.pop():
-            self.canvas.delete(i)
+        for i in self.items.pop(): self.canvas.delete(i)
         self.drawing = False
         if self.strokes:
             self._last_key = None
@@ -690,15 +681,13 @@ class Window3D(ctk.CTkFrame):
         self.reset_panel()
         self._show_hint()
 
-
 # ======================================================================
-# Ventana B · Modo 2D (Diseño Responsivo)
+# Ventana B · Modo 2D
 # ======================================================================
 class Window2D(ctk.CTkFrame):
     def __init__(self, master, recognizer, on_back):
         super().__init__(master, fg_color=BG)
         self.rec, self.on_back = recognizer, on_back
-
         self.size = 500
         self.S = DATA_SIZE / self.size
         self.offset = (0, 0)
@@ -711,34 +700,27 @@ class Window2D(ctk.CTkFrame):
         self._last_key = None
         self.proj_item = None
         self.icons, self.slots = {}, []
-
+        self.letra_actual = None
+        self.guia_anim = None
         self._build()
         self.reset_panel()
-
         top = self.winfo_toplevel()
         top.bind("<Control-z>", lambda e: self.undo() if self.winfo_ismapped() else None)
         top.bind("<Delete>", lambda e: self.clear_canvas() if self.winfo_ismapped() else None)
 
     @staticmethod
     def _make_icon_image(letter, px=128):
-        S = 4
-        n = px * S
+        S = 4; n = px * S
         img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((0, 0, n - 1, n - 1), radius=int(n * 0.24), fill=TILE)
         font = None
-        for name in ("segoeuib.ttf", "arialbd.ttf", "calibrib.ttf", "DejaVuSans-Bold.ttf",
-                     "Arial Bold.ttf", "Helvetica.ttc", "LiberationSans-Bold.ttf"):
-            try:
-                font = ImageFont.truetype(name, int(n * 0.62))
-                break
-            except OSError:
-                continue
+        for name in ("segoeuib.ttf", "arialbd.ttf", "calibrib.ttf", "DejaVuSans-Bold.ttf", "Arial Bold.ttf", "Helvetica.ttc", "LiberationSans-Bold.ttf"):
+            try: font = ImageFont.truetype(name, int(n * 0.62)); break
+            except OSError: continue
         if font is None:
-            try:
-                font = ImageFont.load_default(size=int(n * 0.62))
-            except TypeError:
-                font = ImageFont.load_default()
+            try: font = ImageFont.load_default(size=int(n * 0.62))
+            except TypeError: font = ImageFont.load_default()
         bb = d.textbbox((0, 0), letter, font=font)
         w, h = bb[2] - bb[0], bb[3] - bb[1]
         d.text(((n - w) / 2 - bb[0], (n - h) / 2 - bb[1]), letter, font=font, fill=ACCENT)
@@ -747,82 +729,72 @@ class Window2D(ctk.CTkFrame):
     def _icon(self, letter):
         if letter not in self.icons:
             path = os.path.join(ICON_DIR, f"{letter}.png")
-            if letter == "_vacio":
-                img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
-            elif os.path.exists(path):
-                img = Image.open(path)
-            else:
-                img = self._make_icon_image(letter)
+            if letter == "_vacio": img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+            elif os.path.exists(path): img = Image.open(path)
+            else: img = self._make_icon_image(letter)
             self.icons[letter] = ctk.CTkImage(light_image=img, dark_image=img, size=(40, 40))
         return self.icons[letter]
 
     def _build(self):
-        self.grid_columnconfigure(0, weight=2, uniform="cols")
-        self.grid_columnconfigure(1, weight=1, uniform="cols")
+        self.grid_columnconfigure(0, weight=0, minsize=300)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=0, minsize=320)
         self.grid_rowconfigure(1, weight=1)
 
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(18, 10))
-        ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17,
-              fg_color="#6366f1", text_color="white", hover_color="#4f46e5",
-              command=self.on_back).pack(side="left")
-        ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color=TEXT).pack(side="left", padx=(16, 8))
-        ctk.CTkLabel(header, text="Modo 2D", font=ctk.CTkFont(size=13, weight="bold"),
-                     text_color="white", fg_color=ACCENT, corner_radius=10,
-                     width=70, height=26).pack(side="left")
+        header.grid(row=0, column=0, columnspan=3, sticky="ew", padx=24, pady=(18, 10))
+        ctk.CTkButton(header, text="←  Menú", width=90, height=34, corner_radius=17, fg_color="#6366f1", text_color="white", hover_color="#4f46e5", command=self.on_back).pack(side="left")
+        ctk.CTkLabel(header, text="Reconocedor HMM", font=ctk.CTkFont(size=22, weight="bold"), text_color=TEXT).pack(side="left", padx=(16, 8))
+        ctk.CTkLabel(header, text="Modo 2D", font=ctk.CTkFont(size=13, weight="bold"), text_color="white", fg_color=ACCENT, corner_radius=10, width=70, height=26).pack(side="left")
 
-        left = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
-        left.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(0, 24))
+        col_guia = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
+        col_guia.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(0, 24))
+        ctk.CTkLabel(col_guia, text="Guía de trazo", font=ctk.CTkFont(size=18, weight="bold"), text_color=TEXT).pack(pady=(20, 10))
+        self.guia_frame = ctk.CTkFrame(col_guia, fg_color="#f8fafc", corner_radius=15, border_width=2, border_color="#e2e8f0")
+        self.guia_frame.pack(fill="x", padx=15, pady=10)
+        self.guia_titulo = ctk.CTkLabel(self.guia_frame, text="Dibuja una letra", font=ctk.CTkFont(size=16, weight="bold"), text_color=TEXT)
+        self.guia_titulo.pack(pady=(15, 5))
+        self.guia_canvas = tk.Canvas(self.guia_frame, bg="#f8fafc", width=240, height=180, highlightthickness=0)
+        self.guia_canvas.pack(pady=5)
+        self.guia_texto = ctk.CTkLabel(self.guia_frame, text="", font=ctk.CTkFont(size=13), text_color=MUTED, wraplength=240)
+        self.guia_texto.pack(pady=(0, 15))
+        self.btn_rep_guia = ctk.CTkButton(col_guia, text="↻ Repetir", width=120, height=36, fg_color=TILE, text_color=TEXT, hover_color="#dcdff5", command=self.repetir_guia)
+        self.btn_rep_guia.pack(pady=20)
+        self.guia_anim = GuiaAnimada(self.guia_canvas)
 
-        tools = ctk.CTkFrame(left, fg_color="transparent")
+        col_lienzo = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
+        col_lienzo.grid(row=1, column=1, sticky="nsew", padx=12, pady=(0, 24))
+        tools = ctk.CTkFrame(col_lienzo, fg_color="transparent")
         tools.pack(fill="x", padx=18, pady=(16, 10))
-
-        ctk.CTkButton(tools, text="↶  Deshacer", width=110, height=36, corner_radius=18,
-                      fg_color=TILE, text_color=TEXT, hover_color="#dcdff5",
-                      command=self.undo).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(tools, text="Limpiar lienzo", width=130, height=36, corner_radius=18,
-                      fg_color=DANGER, hover_color="#c93a3f", text_color="white",
-                      command=self.clear_canvas).pack(side="left", padx=(0, 8))
-
-        self.canvas = tk.Canvas(left, bg=CARD, highlightthickness=0, cursor="crosshair")
+        ctk.CTkButton(tools, text="↶  Deshacer", width=110, height=36, corner_radius=18, fg_color=TILE, text_color=TEXT, hover_color="#dcdff5", command=self.undo).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(tools, text="Limpiar lienzo", width=130, height=36, corner_radius=18, fg_color=DANGER, hover_color="#c93a3f", text_color="white", command=self.clear_canvas).pack(side="left", padx=(0, 8))
+        
+        self.canvas = tk.Canvas(col_lienzo, bg=CARD, highlightthickness=0, cursor="crosshair")
         self.canvas.pack(fill="both", expand=True, padx=18, pady=(0, 8))
-
         self.canvas.bind("<Configure>", self._on_canvas_resize)
-        self.ring = self.canvas.create_oval(0, 0, 0, 0, outline=ACCENT, width=2,
-                                            state="hidden", tags="ring")
+        self.ring = self.canvas.create_oval(0, 0, 0, 0, outline=ACCENT, width=2, state="hidden", tags="ring")
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Motion>", lambda e: self._move_ring(e.x, e.y))
         self.canvas.bind("<Leave>", lambda e: self.canvas.itemconfigure(self.ring, state="hidden"))
 
-        self.lbl_status = ctk.CTkLabel(left, text="", width=10, font=ctk.CTkFont(size=13),
-                                       text_color=MUTED)
-        self.lbl_status.pack(fill="x", padx=10, pady=(0, 14))
+        self.lbl_status = ctk.CTkLabel(col_lienzo, text="", font=ctk.CTkFont(size=13), text_color=MUTED)
+        self.lbl_status.pack(pady=(0, 14))
 
         right = ctk.CTkFrame(self, fg_color=CARD, corner_radius=22)
-        right.grid(row=1, column=1, sticky="nsew", padx=(12, 24), pady=(0, 24))
+        right.grid(row=1, column=2, sticky="nsew", padx=(12, 24), pady=(0, 24))
         right.grid_columnconfigure(0, weight=1)
-
         hero = ctk.CTkFrame(right, fg_color=ACCENT, corner_radius=18)
         hero.grid(row=0, column=0, sticky="ew", padx=18, pady=(18, 12))
-        self.lbl_hero = ctk.CTkLabel(hero, text="?", width=88, height=88, corner_radius=16,
-                                     fg_color="white", text_color=ACCENT,
-                                     font=ctk.CTkFont(size=50, weight="bold"))
+        self.lbl_hero = ctk.CTkLabel(hero, text="?", width=88, height=88, corner_radius=16, fg_color="white", text_color=ACCENT, font=ctk.CTkFont(size=50, weight="bold"))
         self.lbl_hero.pack(side="left", padx=16, pady=16)
         info = ctk.CTkFrame(hero, fg_color="transparent")
         info.pack(side="left", padx=6)
-        ctk.CTkLabel(info, text="Letra más probable", text_color="#dcdcff",
-                     font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.lbl_hero_p = ctk.CTkLabel(info, text="—", text_color="white", width=150, anchor="w",
-                                       font=ctk.CTkFont(size=32, weight="bold"))
+        ctk.CTkLabel(info, text="Letra más probable", text_color="#dcdcff", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.lbl_hero_p = ctk.CTkLabel(info, text="—", text_color="white", width=150, anchor="w", font=ctk.CTkFont(size=32, weight="bold"))
         self.lbl_hero_p.pack(anchor="w")
-
-        ctk.CTkLabel(right, text=f"Top {TOP_N} · P(carácter | O₁:t)", text_color=MUTED,
-                     font=ctk.CTkFont(size=12, weight="bold")
-                     ).grid(row=1, column=0, sticky="w", padx=24, pady=(0, 4))
-
+        ctk.CTkLabel(right, text=f"Top {TOP_N} · P(carácter | O₁:t)", text_color=MUTED, font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, sticky="w", padx=24, pady=(0, 4))
         lst = ctk.CTkFrame(right, fg_color="transparent")
         lst.grid(row=2, column=0, sticky="ew", padx=14, pady=(0, 16))
         lst.grid_columnconfigure(0, weight=1)
@@ -830,39 +802,50 @@ class Window2D(ctk.CTkFrame):
             row = ctk.CTkFrame(lst, fg_color=ROW_FIRST if i == 0 else "transparent", corner_radius=14)
             row.grid(row=i, column=0, sticky="ew", pady=2)
             row.grid_columnconfigure(3, weight=1)
-            rank = ctk.CTkLabel(row, text=str(i + 1), width=22, text_color=ACCENT if i == 0 else MUTED,
-                                font=ctk.CTkFont(size=13, weight="bold"))
+            rank = ctk.CTkLabel(row, text=str(i + 1), width=22, text_color=ACCENT if i == 0 else MUTED, font=ctk.CTkFont(size=13, weight="bold"))
             rank.grid(row=0, column=0, padx=(10, 2), pady=5)
             icon = ctk.CTkLabel(row, text="", image=self._icon("_vacio"), width=40, height=40)
             icon.grid(row=0, column=1, padx=(2, 8))
-            name = ctk.CTkLabel(row, text="·", width=26, text_color=ACCENT if i == 0 else TEXT,
-                                font=ctk.CTkFont(size=22, weight="bold"))
+            name = ctk.CTkLabel(row, text="·", width=26, text_color=ACCENT if i == 0 else TEXT, font=ctk.CTkFont(size=22, weight="bold"))
             name.grid(row=0, column=2, padx=(0, 10))
-            bar = ctk.CTkProgressBar(row, height=10, corner_radius=5, fg_color="#e9ebf6",
-                                     progress_color=ACCENT if i == 0 else (ACCENT_SOFT if i < 3 else BAR_OFF))
+            bar = ctk.CTkProgressBar(row, height=10, corner_radius=5, fg_color="#e9ebf6", progress_color=ACCENT if i == 0 else (ACCENT_SOFT if i < 3 else BAR_OFF))
             bar.grid(row=0, column=3, sticky="ew")
             bar.set(0)
-            pct = ctk.CTkLabel(row, text="—", width=64, anchor="e", text_color=TEXT,
-                               font=ctk.CTkFont(size=14, weight="bold" if i == 0 else "normal"))
+            pct = ctk.CTkLabel(row, text="—", width=64, anchor="e", text_color=TEXT, font=ctk.CTkFont(size=14, weight="bold" if i == 0 else "normal"))
             pct.grid(row=0, column=4, padx=(10, 12))
             self.slots.append({"letter": None, "icon": icon, "name": name, "bar": bar, "pct": pct})
+
+    def _mostrar_guia(self, letra):
+        if letra == self.letra_actual: return
+        self.letra_actual = letra
+        self.guia_titulo.configure(text=f"Así se traza la «{letra}»")
+        self.guia_anim.iniciar(letra, ACCENT)
+        if letra in TRAZOS_GUIA:
+            self.guia_texto.configure(text="Sigue el punto rojo.\n1 trazo continuo.")
+        else:
+            self.guia_texto.configure(text="Esta letra no tiene guía animada.")
+
+    def repetir_guia(self):
+        if self.letra_actual:
+            self.guia_anim.iniciar(self.letra_actual, ACCENT)
 
     def _on_canvas_resize(self, event):
         self.canvas.delete("surface")
         self.size = max(200, min(event.width, event.height))
         self.S = DATA_SIZE / self.size
-
         c, s, r = self.canvas, self.size, 22
         x1 = y1 = 2
         x2 = y2 = s - 2
-        pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
-               x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
-
+        pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
         self.offset = ((event.width - s) / 2, (event.height - s) / 2)
         ox, oy = self.offset
-
         pts_shifted = [p + (ox if i % 2 == 0 else oy) for i, p in enumerate(pts)]
         c.create_polygon(pts_shifted, smooth=True, fill=SURFACE, outline=SURFACE_EDGE, width=2, tags="surface")
+        
+        self.canvas.create_line(ox + s*0.1, oy + s*0.2, ox + s*0.9, oy + s*0.2, fill="#e2e8f0", width=1, dash=(2, 4), tags="surface")
+        self.canvas.create_line(ox + s*0.1, oy + s*0.5, ox + s*0.9, oy + s*0.5, fill="#e2e8f0", width=1, dash=(2, 4), tags="surface")
+        self.canvas.create_line(ox + s*0.1, oy + s*0.8, ox + s*0.9, oy + s*0.8, fill="#e2e8f0", width=1, dash=(2, 4), tags="surface")
+        
         self._show_hint()
         self._redraw_all_strokes()
 
@@ -874,9 +857,7 @@ class Window2D(ctk.CTkFrame):
             disp_stroke = [(x + ox, y + oy) for x, y in stroke]
             flat = [c for p in disp_stroke for c in p]
             if len(flat) >= 4:
-                item = self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True,
-                                               splinesteps=8, capstyle="round",
-                                               joinstyle="round", tags="ink")
+                item = self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True, splinesteps=8, capstyle="round", joinstyle="round", tags="ink")
                 self.items.append(item)
             elif len(flat) == 2:
                 x, y = flat
@@ -891,8 +872,7 @@ class Window2D(ctk.CTkFrame):
             ox, oy = self.offset
             x = ox + self.size / 2
             y = oy + self.size / 2
-            self.canvas.create_text(x, y, text="Dibuja aquí una letra minúscula",
-                                    fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
+            self.canvas.create_text(x, y, text="Dibuja aquí una letra minúscula", fill="#b3b8d1", font=("Helvetica", 15), tags="hint")
 
     def _move_ring(self, x, y):
         r = BRUSH + 1
@@ -906,8 +886,7 @@ class Window2D(ctk.CTkFrame):
         self.strokes.append([(e.x, e.y)])
         self.disp = [(e.x, e.y)]
         r = BRUSH / 2.0
-        item = self.canvas.create_oval(e.x - r, e.y - r, e.x + r, e.y + r,
-                                       fill=INK, outline=INK, tags="ink")
+        item = self.canvas.create_oval(e.x - r, e.y - r, e.x + r, e.y + r, fill=INK, outline=INK, tags="ink")
         self.items.append(item)
         self.cur_kind = "dot"
         self._move_ring(e.x, e.y)
@@ -915,12 +894,10 @@ class Window2D(ctk.CTkFrame):
 
     def on_move(self, e):
         self._move_ring(e.x, e.y)
-        if not self.drawing or not self.strokes:
-            return
+        if not self.drawing or not self.strokes: return
         stroke = self.strokes[-1]
         lx, ly = stroke[-1]
-        if (e.x - lx) ** 2 + (e.y - ly) ** 2 < MIN_STEP ** 2:
-            return
+        if (e.x - lx) ** 2 + (e.y - ly) ** 2 < MIN_STEP ** 2: return
         stroke.append((e.x, e.y))
         px, py = self.disp[-1]
         self.disp.append((px + (e.x - px) * FOLLOW, py + (e.y - py) * FOLLOW))
@@ -938,9 +915,7 @@ class Window2D(ctk.CTkFrame):
         flat = [c for p in self.disp for c in p]
         if self.cur_kind == "dot":
             self.canvas.delete(self.items[-1])
-            self.items[-1] = self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True,
-                                                     splinesteps=8, capstyle="round",
-                                                     joinstyle="round", tags="ink")
+            self.items[-1] = self.canvas.create_line(*flat, fill=INK, width=BRUSH, smooth=True, splinesteps=8, capstyle="round", joinstyle="round", tags="ink")
             self.cur_kind = "line"
         else:
             self.canvas.coords(self.items[-1], *flat)
@@ -952,8 +927,7 @@ class Window2D(ctk.CTkFrame):
 
     def _ranking(self, data):
         seq = self.rec.extractor.extract(data)
-        if not seq:
-            return []
+        if not seq: return []
         models = self.rec.classifier.models
         chars = list(models.keys())
         ll = np.array([models[c].log_likelihood(seq) for c in chars]) / TEMPERATURE
@@ -964,13 +938,11 @@ class Window2D(ctk.CTkFrame):
         return [(chars[i], float(p[i])) for i in order]
 
     def schedule_update(self):
-        if self._pending is None:
-            self._pending = self.after(UPDATE_MS, self.do_update)
+        if self._pending is None: self._pending = self.after(UPDATE_MS, self.do_update)
 
     def do_update(self):
         self._pending = None
-        if not self.strokes:
-            return
+        if not self.strokes: return
         data = self._data_strokes()
         ranking = self._ranking(data)
         if not ranking:
@@ -993,12 +965,11 @@ class Window2D(ctk.CTkFrame):
         best, pb = top[0]
         self.lbl_hero.configure(text=best)
         self.lbl_hero_p.configure(text=f"{100 * pb:.1f}%")
-        self.lbl_status.configure(
-            text=f"Autocompletando como «{best}»  ·  línea punteada = trayectoria estimada")
+        self.lbl_status.configure(text=f"Autocompletando como «{best}»")
+        self._mostrar_guia(best)
 
     def _hide_projection(self):
-        if self.proj_item is not None:
-            self.canvas.itemconfigure(self.proj_item, state="hidden")
+        if self.proj_item is not None: self.canvas.itemconfigure(self.proj_item, state="hidden")
 
     def _draw_projection(self, data):
         res = self.rec.autocomplete(data)
@@ -1014,8 +985,7 @@ class Window2D(ctk.CTkFrame):
             self._hide_projection()
             return
         if self.proj_item is None:
-            self.proj_item = self.canvas.create_line(*path, fill=ACCENT_SOFT, width=4, dash=(2, 7),
-                                                     capstyle="round", smooth=True, tags="proj")
+            self.proj_item = self.canvas.create_line(*path, fill=ACCENT_SOFT, width=4, dash=(2, 7), capstyle="round", smooth=True, tags="proj")
         else:
             self.canvas.coords(self.proj_item, *path)
             self.canvas.itemconfigure(self.proj_item, state="normal")
@@ -1033,10 +1003,14 @@ class Window2D(ctk.CTkFrame):
         self.lbl_hero.configure(text="?")
         self.lbl_hero_p.configure(text="—")
         self.lbl_status.configure(text="Empieza a dibujar con el ratón o con el dedo")
+        self.letra_actual = None
+        self.guia_titulo.configure(text="Dibuja una letra")
+        self.guia_anim.detener()
+        self.guia_canvas.delete("all")
+        self.guia_texto.configure(text="")
 
     def undo(self):
-        if not self.strokes:
-            return
+        if not self.strokes: return
         self.strokes.pop()
         self.canvas.delete(self.items.pop())
         self.drawing = False
@@ -1056,7 +1030,6 @@ class Window2D(ctk.CTkFrame):
         self.reset_panel()
         self._show_hint()
 
-
 # ======================================================================
 # Aplicación principal
 # ======================================================================
@@ -1065,13 +1038,12 @@ class App(ctk.CTk):
         super().__init__()
         ctk.set_appearance_mode("light")
         self.title("Reconocedor HMM · Procesos Estocásticos")
-        w, h = 1120, 740
+        w, h = 1250, 760
         x = max(0, (self.winfo_screenwidth() - w) // 2)
         y = max(0, (self.winfo_screenheight() - h) // 2 - 20)
         self.geometry(f"{w}x{h}+{x}+{y}")
-        self.minsize(1000, 660)
+        self.minsize(1100, 660)
         self.configure(fg_color=BG)
-
         self.recognizer_2d = self._load_model_2d()
         self.recognizer_3d = self._load_model_3d()
         self.current = None
@@ -1082,51 +1054,38 @@ class App(ctk.CTk):
 
     @staticmethod
     def _load_model_2d():
-        try:
-            classifier = ModelRepository(MODEL_2D).load()
+        try: classifier = ModelRepository(MODEL_2D).load()
         except FileNotFoundError:
-            messagebox.showerror("Error", f"No se encontró el modelo:\n{MODEL_2D}\n"
-                                          "Entrénalo con:  python modelo_2d/train_2d.py")
+            messagebox.showerror("Error", f"No se encontró el modelo:\n{MODEL_2D}\nEntrénalo con: python modelo_2d/train_2d.py")
             return None
         return Recognizer(Extractor2D(k_dir=16, min_dist=MIN_DIST_2D), classifier)
 
     @staticmethod
     def _load_model_3d():
-        try:
-            classifier = ModelRepository(MODEL_3D).load()
-        except FileNotFoundError:
-            return None  # Silencioso al inicio, avisa si intentas entrar
+        try: classifier = ModelRepository(MODEL_3D).load()
+        except FileNotFoundError: return None
         return Recognizer(Extractor3D(k_dir=16, min_angle_dist=MIN_ANGLE_3D), classifier)
 
     def show(self, frame):
-        if self.current is not None:
-            self.current.pack_forget()
+        if self.current is not None: self.current.pack_forget()
         self.current = frame
         frame.pack(fill="both", expand=True)
 
-    def go_menu(self):
-        self.show(self.menu)
-
+    def go_menu(self): self.show(self.menu)
     def open_2d(self):
         if self.recognizer_2d is None:
             self.recognizer_2d = self._load_model_2d()
-            if self.recognizer_2d is None:
-                return
-        if self.window2d is None:
-            self.window2d = Window2D(self, self.recognizer_2d, on_back=self.go_menu)
+            if self.recognizer_2d is None: return
+        if self.window2d is None: self.window2d = Window2D(self, self.recognizer_2d, on_back=self.go_menu)
         self.show(self.window2d)
-
     def open_3d(self):
         if self.recognizer_3d is None:
             self.recognizer_3d = self._load_model_3d()
             if self.recognizer_3d is None:
-                messagebox.showerror("Error", f"No se encontró el modelo 3D:\n{MODEL_3D}\n\n"
-                                              "Asegúrate de haber ejecutado:\npython modelo_3d/train_3d.py")
+                messagebox.showerror("Error", f"No se encontró el modelo 3D:\n{MODEL_3D}\n\nAsegúrate de haber ejecutado:\npython modelo_3d/train_3d.py")
                 return
-        if self.window3d is None:
-            self.window3d = Window3D(self, self.recognizer_3d, on_back=self.go_menu)
+        if self.window3d is None: self.window3d = Window3D(self, self.recognizer_3d, on_back=self.go_menu)
         self.show(self.window3d)
-
 
 if __name__ == "__main__":
     app = App()
