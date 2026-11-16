@@ -124,20 +124,53 @@ class HMM:
             prev_ll = total_ll
         return total_ll
 
-    def predict_future(self, O, total_len=None):
+    def predict_future(self, O, total_len=None, max_final=1):
+        """
+        Símbolos restantes más probables dada la secuencia parcial O.
+
+        Método (en vez de difundir la distribución de estados y tomar el
+        argmax de p @ B en cada paso, que se queda pegado en el estado final):
+          1. Con Forward se obtiene el estado actual más probable
+             s* = argmax alpha_t(i).
+          2. Se recorren los estados s*, s*+1, ..., N-2 (topología left-right).
+             Cada estado i dura en promedio d_i = 1 / (1 - a_ii) pasos
+             (esperanza de una geométrica) y emite su símbolo dominante
+             argmax_k b_i(k).
+          3. Las duraciones se reescalan para que el total case con los pasos
+             que faltan (total_len - t), con el factor limitado a [0.5, 2].
+          4. El estado final es absorbente (a_NN = 1), así que su duración se
+             limita a 'max_final' pasos (0 = cortar la proyección al llegar).
+             Si el estado actual ya es el final, no hay proyección.
+        """
         T_total = total_len or self.mean_len
         t = len(O)
+        remaining = T_total - t
+        if remaining <= 0:
+            return []
+
         if t == 0:
             p = self.pi.copy()
         else:
             alpha, _ = self.forward(O)
             p = alpha[-1].copy()
+
+        last = self.N - 1
+        s = int(np.argmax(p))
+        if s >= last:
+            return []
+
+        stay = np.clip(np.diag(self.A)[s:last], 0.0, 0.95)
+        dur = 1.0 / (1.0 - stay)
+        total = dur.sum() + max_final
+        f = float(np.clip(remaining / total, 0.5, 2.0))
+
         future = []
-        for _ in range(t, T_total):
-            p = p @ self.A
-            p /= p.sum() + EPS
-            future.append(int(np.argmax(p @ self.B)))
-        return future
+        for i, d in zip(range(s, last), dur):
+            n = max(1, int(round(d * f)))
+            future.extend([int(np.argmax(self.B[i]))] * n)
+        if max_final > 0:
+            future.extend([int(np.argmax(self.B[last]))] * int(max_final))
+        return future[:remaining]
 
     def to_dict(self):
         return {"N": self.N, "K": self.K, "mean_len": self.mean_len,
