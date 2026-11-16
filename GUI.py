@@ -29,6 +29,15 @@ UPDATE_MS = 200
 TEMPERATURE = 4.0
 TOP_N = 8
 
+# --- Línea del trazo probable (proyección) ---
+# Colores oscuros y saturados para que se vean sobre el lienzo claro; guiones largos
+# y flecha al final para que se entienda hacia dónde seguiría el trazo.
+PROJ_COLOR_2D = "#1d4ed8"
+PROJ_COLOR_3D = "#059669"
+PROJ_WIDTH = 4
+PROJ_DASH = (7, 5)
+PROJ_ARROW = (12, 14, 5)
+
 # --- GUÍAS DE TRAZO (generadas con generar_guias.py a partir del dataset de Glifo Captura) ---
 # Cada letra es una lista de trazos EN EL ORDEN Y SENTIDO en que fueron capturados.
 # Cada trazo es una lista de puntos (x, y) en un cuadro de 0 a 100 (y hacia abajo).
@@ -773,7 +782,10 @@ class Window3D(GuiaMixin, ctk.CTkFrame):
             self._hide_projection()
             return
         if self.proj_item is None:
-            self.proj_item = self.canvas.create_line(*path, fill="#86efac", width=4, dash=(2, 7), capstyle="round", smooth=True, tags="proj")
+            # Línea oscura, gruesa, de guiones largos y con flecha al final.
+            self.proj_item = self.canvas.create_line(
+                *path, fill=PROJ_COLOR_3D, width=PROJ_WIDTH, dash=PROJ_DASH,
+                arrow=tk.LAST, arrowshape=PROJ_ARROW, joinstyle="round", tags="proj")
         else:
             self.canvas.coords(self.proj_item, *path)
             self.canvas.itemconfigure(self.proj_item, state="normal")
@@ -1102,7 +1114,10 @@ class Window2D(GuiaMixin, ctk.CTkFrame):
             self._hide_projection()
             return
         if self.proj_item is None:
-            self.proj_item = self.canvas.create_line(*path, fill=ACCENT_SOFT, width=4, dash=(2, 7), capstyle="round", smooth=True, tags="proj")
+            # Línea oscura, gruesa, de guiones largos y con flecha al final.
+            self.proj_item = self.canvas.create_line(
+                *path, fill=PROJ_COLOR_2D, width=PROJ_WIDTH, dash=PROJ_DASH,
+                arrow=tk.LAST, arrowshape=PROJ_ARROW, joinstyle="round", tags="proj")
         else:
             self.canvas.coords(self.proj_item, *path)
             self.canvas.itemconfigure(self.proj_item, state="normal")
